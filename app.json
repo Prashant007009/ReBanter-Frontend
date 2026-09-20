@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "ReBanter",
+    "slug": "rebanter",
+    "scheme": "rebanter",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.rebanter.mobile"
+    },
+    "android": {
+      "package": "app.rebanter.mobile"
+    }
+  }
+}

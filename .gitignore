@@ -1,0 +1,19 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.log
+.env
+.env.local
+.DS_Store
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+ios/
+android/
+
+# Local Claude Code project instructions — intentionally not shared via git
+CLAUDE.md
