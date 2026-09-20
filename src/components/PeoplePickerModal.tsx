@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "./Avatar";
-import { getMyCrews } from "@/api/crew";
+import { getMyCrew } from "@/api/crew";
 import { useSession } from "@/session/SessionContext";
 import type { UserSummary } from "@/api/types";
 
@@ -27,14 +27,8 @@ export function PeoplePickerModal({
   useEffect(() => {
     if (!visible) return;
     setIsLoading(true);
-    getMyCrews()
-      .then((crews) => {
-        const seen = new Set<string>();
-        const members = crews
-          .flatMap((c) => c.members)
-          .filter((m) => m.id !== user?.id && !seen.has(m.id) && seen.add(m.id));
-        setPeople(members);
-      })
+    getMyCrew()
+      .then((crew) => setPeople(crew.filter((m) => m.id !== user?.id)))
       .finally(() => setIsLoading(false));
   }, [visible, user?.id]);
 

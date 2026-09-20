@@ -10,6 +10,7 @@ export interface MeProfile {
   avatarUrl: string | null;
   coverUrl: string | null;
   link: string | null;
+  isPrivate: boolean;
   whoCanBanter: "CREW_ONLY" | "EVERYONE";
   windDownAfterMin: number | null;
   quietHoursStart: string | null;

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
@@ -8,6 +10,7 @@ import { getPulse, markAllRead } from "@/api/pulse";
 import { acceptCrewRequest, skipCrewRequest } from "@/api/crew";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Notification } from "@/api/types";
+import type { RootStackParamList } from "@/navigation/types";
 
 const FILTERS = ["All", "Cheers", "Crew", "Mentions"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -71,6 +74,7 @@ function NotificationIcon({ type }: { type: Notification["type"] }) {
 }
 
 export function PulseScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [items, setItems] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
   const [isLoading, setIsLoading] = useState(true);
@@ -99,10 +103,10 @@ export function PulseScreen() {
   const earlier = useMemo(() => filtered.filter((n) => !dayjs(n.createdAt).isAfter(dayjs().startOf("day"))), [filtered]);
 
   async function onLetIn(n: Notification) {
-    if (!n.crewId || !n.actorId) return;
+    if (!n.actorId) return;
     setResolvedIds((s) => new Set(s).add(n.id));
     try {
-      await acceptCrewRequest(n.crewId, n.actorId);
+      await acceptCrewRequest(n.actorId);
     } catch {
       setResolvedIds((s) => {
         const next = new Set(s);
@@ -113,10 +117,10 @@ export function PulseScreen() {
   }
 
   async function onSkip(n: Notification) {
-    if (!n.crewId || !n.actorId) return;
+    if (!n.actorId) return;
     setResolvedIds((s) => new Set(s).add(n.id));
     try {
-      await skipCrewRequest(n.crewId, n.actorId);
+      await skipCrewRequest(n.actorId);
     } catch {
       setResolvedIds((s) => {
         const next = new Set(s);
@@ -152,10 +156,10 @@ export function PulseScreen() {
                   </View>
                 ) : item.actor && (item.type === "CHEER" || item.type === "REPLY") ? (
                   <Avatar handle={item.actor.handle} displayName={item.actor.displayName} avatarUrl={item.actor.avatarUrl} size={44} radius={13} />
-                ) : item.type === "CREW_JOINED" ? (
-                  <View style={styles.tuneIn}>
+                ) : item.type === "CREW_JOINED" && item.actor ? (
+                  <Pressable style={styles.tuneIn} onPress={() => navigation.navigate("UserProfile", { handle: item.actor!.handle })}>
                     <Text style={styles.tuneInText}>Tune in</Text>
-                  </View>
+                  </Pressable>
                 ) : null}
               </View>
             );
@@ -186,6 +190,7 @@ export function PulseScreen() {
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filtersList}
         data={FILTERS}
         keyExtractor={(f) => f}
         contentContainerStyle={styles.filters}
@@ -225,7 +230,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 14 },
   title: { fontFamily: fonts.display, fontSize: 30, color: colors.ink },
   markAllRead: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.accent, paddingBottom: 4 },
-  filters: { paddingHorizontal: 16, gap: 8, paddingBottom: 18 },
+  filtersList: { flexGrow: 0, flexShrink: 0, marginBottom: 18 },
+  filters: { paddingHorizontal: 16, gap: 8 },
   chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 10 },
   chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },

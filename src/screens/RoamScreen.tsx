@@ -8,7 +8,6 @@ import { SearchIcon } from "@/assets/icons";
 import { Avatar } from "@/components/Avatar";
 import { getRooms } from "@/api/rooms";
 import { search, type SearchResults } from "@/api/search";
-import { createBanter } from "@/api/banters";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Room } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
@@ -43,7 +42,6 @@ export function RoamScreen() {
   const [chip, setChip] = useState<(typeof CHIPS)[number]>("For you");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [startingBanterWith, setStartingBanterWith] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -84,18 +82,6 @@ export function RoamScreen() {
     return () => clearTimeout(handle);
   }, [query]);
 
-  async function onMessage(userId: string) {
-    setStartingBanterWith(userId);
-    try {
-      const banter = await createBanter(userId);
-      const other = results?.users.find((u) => u.id === userId);
-      navigation.navigate("BanterThread", { banterId: banter.id, handle: other?.handle ?? "" });
-      setQuery("");
-    } finally {
-      setStartingBanterWith(null);
-    }
-  }
-
   const isSearchMode = query.trim().length > 0;
 
   return (
@@ -131,16 +117,17 @@ export function RoamScreen() {
                       <Text style={styles.sectionLabel}>PEOPLE</Text>
                       <View style={styles.resultsCard}>
                         {results.users.map((u, i) => (
-                          <View key={u.id} style={[styles.resultRow, i > 0 && styles.resultDivider]}>
+                          <Pressable
+                            key={u.id}
+                            style={[styles.resultRow, i > 0 && styles.resultDivider]}
+                            onPress={() => navigation.navigate("UserProfile", { handle: u.handle })}
+                          >
                             <Avatar handle={u.handle} displayName={u.displayName} avatarUrl={u.avatarUrl} size={40} radius={14} />
                             <View style={{ flex: 1, minWidth: 0 }}>
                               <Text style={styles.resultName}>{u.displayName}</Text>
                               <Text style={styles.resultHandle}>@{u.handle}</Text>
                             </View>
-                            <Pressable style={styles.messageButton} onPress={() => onMessage(u.id)} disabled={startingBanterWith === u.id}>
-                              <Text style={styles.messageButtonText}>{startingBanterWith === u.id ? "…" : "Message"}</Text>
-                            </Pressable>
-                          </View>
+                          </Pressable>
                         ))}
                       </View>
                     </>
@@ -297,8 +284,6 @@ const styles = StyleSheet.create({
   resultDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
   resultName: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
   resultHandle: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint, marginTop: 2 },
-  messageButton: { backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9 },
-  messageButtonText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.surfaceRaised },
   error: { color: colors.cheer, textAlign: "center", marginVertical: 20 },
   empty: { color: colors.inkMuted, paddingHorizontal: 20, marginTop: 20 },
 });

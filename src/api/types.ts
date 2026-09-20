@@ -22,11 +22,33 @@ export interface Drop {
   counts: { reactions: number; replies: number };
 }
 
-export interface CrewSummary {
+export interface Reply {
   id: string;
-  name: string;
-  ownerId: string;
-  members: UserSummary[];
+  dropId: string;
+  authorId: string;
+  parentId: string | null;
+  author: UserSummary;
+  body: string;
+  createdAt: string;
+  likeCount: number;
+  likedByMe: boolean;
+  replies?: Reply[];
+}
+
+export type Relationship = "self" | "none" | "requested" | "incoming" | "crew";
+
+export interface PublicUserProfile {
+  id: string;
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  link: string | null;
+  isPrivate: boolean;
+  stats: { drops: number; crew: number };
+  relationship: Relationship;
+  canViewDrops: boolean;
 }
 
 export interface Room {
@@ -44,7 +66,6 @@ export interface Notification {
   actor: UserSummary | null;
   type: "CHEER" | "REPLY" | "CREW_JOINED" | "CREW_REQUEST" | "MENTION";
   dropId: string | null;
-  crewId: string | null;
   read: boolean;
   createdAt: string;
 }

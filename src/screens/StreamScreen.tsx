@@ -8,18 +8,16 @@ import { Avatar } from "@/components/Avatar";
 import { DropCard } from "@/components/DropCard";
 import { SearchIcon, MessageIcon, PlusIcon } from "@/assets/icons";
 import { getFeed } from "@/api/drops";
-import { getMyCrews } from "@/api/crew";
+import { getMyCrew } from "@/api/crew";
 import { getPulse } from "@/api/pulse";
-import { useSession } from "@/session/SessionContext";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
-import type { Drop, CrewSummary } from "@/api/types";
+import type { Drop, UserSummary } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
 
 export function StreamScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user } = useSession();
   const [drops, setDrops] = useState<Drop[]>([]);
-  const [crewmates, setCrewmates] = useState<CrewSummary["members"]>([]);
+  const [crewmates, setCrewmates] = useState<UserSummary[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,20 +25,16 @@ export function StreamScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [feed, crews, pulse] = await Promise.all([getFeed(), getMyCrews(), getPulse()]);
+      const [feed, crew, pulse] = await Promise.all([getFeed(), getMyCrew(), getPulse()]);
       setDrops(feed.items);
-      const seen = new Set<string>();
-      const members = crews
-        .flatMap((c) => c.members)
-        .filter((m) => m.id !== user?.id && !seen.has(m.id) && seen.add(m.id));
-      setCrewmates(members);
+      setCrewmates(crew);
       setUnreadCount(pulse.items.filter((n) => !n.read).length);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load your stream");
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
     load();

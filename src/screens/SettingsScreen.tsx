@@ -27,6 +27,17 @@ export function SettingsScreen() {
 
   if (!user) return null;
 
+  async function togglePrivate() {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      await updateMe({ isPrivate: !user.isPrivate });
+      await refreshMe();
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function toggleWhoCanBanter() {
     if (!user) return;
     setIsSaving(true);
@@ -72,6 +83,14 @@ export function SettingsScreen() {
       <Text style={styles.sectionLabel}>ACCOUNT</Text>
       <View style={styles.section}>
         <SettingsRow label="Edit profile" onPress={() => navigation.navigate("EditProfile")} />
+        <View style={styles.divider} />
+        <View style={styles.row}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.rowLabel}>Private account</Text>
+            <Text style={styles.rowSubtitle}>Only your crew can see your drops</Text>
+          </View>
+          <Toggle value={user.isPrivate} onChange={togglePrivate} disabled={isSaving} />
+        </View>
         <View style={styles.divider} />
         <SettingsRow label="Who can banter you" value={user.whoCanBanter === "CREW_ONLY" ? "Crew only" : "Everyone"} onPress={toggleWhoCanBanter} />
         <View style={styles.divider} />

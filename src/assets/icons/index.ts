@@ -17,6 +17,8 @@ export { ChevronRightIcon } from "./ChevronRightIcon";
 export { VideoIcon } from "./VideoIcon";
 export { HamburgerIcon } from "./HamburgerIcon";
 export { PinIcon } from "./PinIcon";
+export { LockIcon } from "./LockIcon";
+export { HeartIcon } from "./HeartIcon";
 export { UserIcon } from "./UserIcon";
 export { UserPlusIcon } from "./UserPlusIcon";
 export { UsersIcon } from "./UsersIcon";

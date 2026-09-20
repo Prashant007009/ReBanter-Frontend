@@ -1,14 +1,18 @@
 import { apiFetch } from "./client";
-import type { CrewSummary } from "./types";
+import type { UserSummary } from "./types";
 
-export function getMyCrews() {
-  return apiFetch<CrewSummary[]>("/api/crew");
+export function getMyCrew() {
+  return apiFetch<UserSummary[]>("/api/crew");
 }
 
-export function acceptCrewRequest(crewId: string, userId: string) {
-  return apiFetch(`/api/crew/${crewId}/requests/${userId}/accept`, { method: "POST" });
+export function sendCrewRequest(userId: string) {
+  return apiFetch(`/api/crew/requests`, { method: "POST", body: JSON.stringify({ userId }) });
 }
 
-export function skipCrewRequest(crewId: string, userId: string) {
-  return apiFetch(`/api/crew/${crewId}/requests/${userId}/skip`, { method: "POST" });
+export function acceptCrewRequest(userId: string) {
+  return apiFetch(`/api/crew/requests/${userId}/accept`, { method: "POST" });
+}
+
+export function skipCrewRequest(userId: string) {
+  return apiFetch(`/api/crew/requests/${userId}/skip`, { method: "POST" });
 }

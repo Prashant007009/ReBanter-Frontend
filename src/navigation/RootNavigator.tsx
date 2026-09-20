@@ -9,6 +9,7 @@ import { BanterThreadScreen } from "@/screens/BanterThreadScreen";
 import { NewDropScreen } from "@/screens/NewDropScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { EditProfileScreen } from "@/screens/EditProfileScreen";
+import { UserProfileScreen } from "@/screens/UserProfileScreen";
 import { useSession } from "@/session/SessionContext";
 import { colors } from "@/theme/colors";
 import type { RootStackParamList } from "./types";
@@ -24,6 +25,7 @@ function AppNavigator() {
       <Stack.Screen name="BanterThread" component={BanterThreadScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       {/* "modal" presentation relies on react-native-screens' native overlay
           handling, which is unreliable on the web platform (screens can end
           up rendering on top of each other instead of properly stacked) —

@@ -18,6 +18,7 @@ export type RootStackParamList = {
   NewDrop: undefined;
   Settings: undefined;
   EditProfile: undefined;
+  UserProfile: { handle: string };
 };
 
 declare global {
