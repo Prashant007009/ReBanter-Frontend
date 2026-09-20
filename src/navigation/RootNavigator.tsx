@@ -24,7 +24,13 @@ function AppNavigator() {
       <Stack.Screen name="BanterThread" component={BanterThreadScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-      <Stack.Screen name="NewDrop" component={NewDropScreen} options={{ presentation: "modal" }} />
+      {/* "modal" presentation relies on react-native-screens' native overlay
+          handling, which is unreliable on the web platform (screens can end
+          up rendering on top of each other instead of properly stacked) —
+          a plain push is what we're testing against here since there's no
+          emulator in this environment. Fine to revisit once tested on a
+          real device/simulator. */}
+      <Stack.Screen name="NewDrop" component={NewDropScreen} />
     </Stack.Navigator>
   );
 }
