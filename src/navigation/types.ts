@@ -5,9 +5,14 @@ export type TabParamList = {
   Me: undefined;
 };
 
+export type AuthStackParamList = {
+  SignIn: undefined;
+  SignUp: undefined;
+};
+
 export type RootStackParamList = {
   Tabs: undefined;
-  LoopsPlayer: { loopId: string };
+  LoopsPlayer: { roomId: string };
   Banters: undefined;
   BanterThread: { banterId: string; handle: string };
   NewDrop: undefined;
