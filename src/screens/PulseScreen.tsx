@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
+import { ZapIcon, UserPlusIcon, ReplyIcon, MentionIcon, UserIcon } from "@/assets/icons";
 import { getPulse, markAllRead } from "@/api/pulse";
 import { acceptCrewRequest, skipCrewRequest } from "@/api/crew";
 import type { Notification } from "@/api/types";
@@ -33,6 +34,41 @@ function describe(n: Notification): string {
   }
 }
 
+function NotificationIcon({ type }: { type: Notification["type"] }) {
+  switch (type) {
+    case "CHEER":
+      return (
+        <View style={[styles.iconTile, { backgroundColor: colors.cheerTint }]}>
+          <ZapIcon size={18} color={colors.cheer} />
+        </View>
+      );
+    case "CREW_JOINED":
+      return (
+        <View style={[styles.iconTile, { backgroundColor: colors.accentTint }]}>
+          <UserPlusIcon size={18} color={colors.accent} />
+        </View>
+      );
+    case "REPLY":
+      return (
+        <View style={[styles.iconTile, { backgroundColor: "#E7F2EA" }]}>
+          <ReplyIcon size={18} color="#2F6A50" strokeWidth={2} />
+        </View>
+      );
+    case "MENTION":
+      return (
+        <View style={[styles.iconTile, { backgroundColor: "#FBF1DC" }]}>
+          <MentionIcon size={18} color="#A97F21" />
+        </View>
+      );
+    case "CREW_REQUEST":
+      return (
+        <View style={[styles.iconTile, { backgroundColor: colors.accentTint }]}>
+          <UserIcon size={18} color={colors.accent} />
+        </View>
+      );
+  }
+}
+
 export function PulseScreen() {
   const [items, setItems] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
@@ -57,6 +93,8 @@ export function PulseScreen() {
   }, [load]);
 
   const filtered = useMemo(() => items.filter((n) => matchesFilter(n, filter)), [items, filter]);
+  const today = useMemo(() => filtered.filter((n) => dayjs(n.createdAt).isAfter(dayjs().startOf("day"))), [filtered]);
+  const earlier = useMemo(() => filtered.filter((n) => !dayjs(n.createdAt).isAfter(dayjs().startOf("day"))), [filtered]);
 
   async function onLetIn(n: Notification) {
     if (!n.crewId || !n.actorId) return;
@@ -84,6 +122,45 @@ export function PulseScreen() {
         return next;
       });
     }
+  }
+
+  function renderGroup(label: string, group: Notification[]) {
+    if (group.length === 0) return null;
+    return (
+      <View key={label}>
+        <Text style={styles.sectionLabel}>{label}</Text>
+        <View style={styles.card}>
+          {group.map((item, index) => {
+            const resolved = resolvedIds.has(item.id);
+            return (
+              <View key={item.id} style={[styles.row, index > 0 && styles.rowDivider]}>
+                <NotificationIcon type={item.type} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.rowText}>{describe(item)}</Text>
+                  <Text style={styles.rowTime}>{dayjs(item.createdAt).fromNow()}</Text>
+                </View>
+                {item.type === "CREW_REQUEST" && !resolved ? (
+                  <View style={styles.actions}>
+                    <Pressable style={styles.letIn} onPress={() => onLetIn(item)}>
+                      <Text style={styles.letInText}>Let in</Text>
+                    </Pressable>
+                    <Pressable style={styles.skip} onPress={() => onSkip(item)}>
+                      <Text style={styles.skipText}>Skip</Text>
+                    </Pressable>
+                  </View>
+                ) : item.actor && (item.type === "CHEER" || item.type === "REPLY") ? (
+                  <Avatar handle={item.actor.handle} displayName={item.actor.displayName} avatarUrl={item.actor.avatarUrl} size={44} radius={13} />
+                ) : item.type === "CREW_JOINED" ? (
+                  <View style={styles.tuneIn}>
+                    <Text style={styles.tuneInText}>Tune in</Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -123,40 +200,18 @@ export function PulseScreen() {
         <Text style={styles.error}>{error}</Text>
       ) : (
         <FlatList
-          data={filtered}
-          keyExtractor={(n) => n.id}
+          data={[0]}
+          keyExtractor={() => "pulse-body"}
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
           contentContainerStyle={{ paddingBottom: 24 }}
-          onRefresh={load}
-          refreshing={isLoading}
           ListEmptyComponent={<Text style={styles.empty}>Nothing here yet.</Text>}
-          renderItem={({ item }) => {
-            const resolved = resolvedIds.has(item.id);
-            return (
-              <View style={styles.row}>
-                <Avatar
-                  handle={item.actor?.handle ?? "?"}
-                  displayName={item.actor?.displayName ?? "?"}
-                  avatarUrl={item.actor?.avatarUrl}
-                  size={40}
-                  radius={14}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowText}>{describe(item)}</Text>
-                  <Text style={styles.rowTime}>{dayjs(item.createdAt).fromNow()}</Text>
-                </View>
-                {item.type === "CREW_REQUEST" && !resolved ? (
-                  <View style={styles.actions}>
-                    <Pressable style={styles.letIn} onPress={() => onLetIn(item)}>
-                      <Text style={styles.letInText}>Let in</Text>
-                    </Pressable>
-                    <Pressable style={styles.skip} onPress={() => onSkip(item)}>
-                      <Text style={styles.skipText}>Skip</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-            );
-          }}
+          renderItem={() => (
+            <View>
+              {renderGroup("Today", today)}
+              {renderGroup("Earlier", earlier)}
+              {filtered.length === 0 ? <Text style={styles.empty}>Nothing here yet.</Text> : null}
+            </View>
+          )}
         />
       )}
     </View>
@@ -173,14 +228,20 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
   chipTextActive: { color: colors.surfaceRaised, fontFamily: fonts.bodyBold },
-  row: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20, paddingVertical: 12 },
-  rowText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink },
+  sectionLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, paddingHorizontal: 20, marginBottom: 10 },
+  card: { marginHorizontal: 16, marginBottom: 18, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, overflow: "hidden" },
+  row: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 15, paddingVertical: 14 },
+  rowDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  iconTile: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  rowText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.ink },
   rowTime: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint, marginTop: 3 },
   actions: { flexDirection: "row", gap: 7 },
   letIn: { backgroundColor: colors.ink, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 11 },
   letInText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.surfaceRaised },
-  skip: { backgroundColor: "#F4F0E9", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 11 },
+  skip: { backgroundColor: colors.chipMuted, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 11 },
   skipText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.inkMuted },
+  tuneIn: { backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 11 },
+  tuneInText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.surfaceRaised },
   error: { color: colors.cheer, textAlign: "center", marginTop: 30 },
   empty: { color: colors.inkMuted, textAlign: "center", marginTop: 30 },
 });

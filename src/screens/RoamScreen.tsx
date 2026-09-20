@@ -2,10 +2,33 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, fonts } from "@/theme/colors";
+import { SearchIcon } from "@/assets/icons";
 import { getRooms } from "@/api/rooms";
 import type { Room } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
+
+const CHIPS = ["For you", "Loops", "Makers", "Food"] as const;
+
+// Decorative browse-grid tiles — there's no generic content-discovery
+// endpoint yet (out of scope per the backend's Rooms & loops issue), so
+// this mirrors the design's placeholder gradient tiles rather than faking
+// content that doesn't exist server-side.
+interface GridTile {
+  colors: readonly [string, string];
+  tall: boolean;
+  label?: string;
+}
+
+const GRID_TILES: GridTile[] = [
+  { colors: ["#E4DFF8", "#B8ADE9"], tall: true, label: "Loop · 0:14" },
+  { colors: ["#F3DCD0", "#E0AF96"], tall: false },
+  { colors: ["#DEEBDF", "#AEC8B3"], tall: false },
+  { colors: ["#E2E4EA", "#B9BFCB"], tall: false },
+  { colors: ["#F6EBD3", "#E2C899"], tall: true },
+  { colors: ["#EFE3F5", "#CDB4DC"], tall: false },
+];
 
 export function RoamScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -13,6 +36,7 @@ export function RoamScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [chip, setChip] = useState<(typeof CHIPS)[number]>("For you");
 
   const load = useCallback(async () => {
     setError(null);
@@ -35,7 +59,7 @@ export function RoamScreen() {
       <Text style={styles.title}>Roam</Text>
 
       <View style={styles.searchBar}>
-        <Text style={styles.searchIcon}>⌕</Text>
+        <SearchIcon size={18} color={colors.inkFaint} strokeWidth={2} />
         <TextInput
           style={styles.searchInput}
           placeholder="People, tags, rooms"
@@ -45,46 +69,83 @@ export function RoamScreen() {
         />
       </View>
 
-      <Text style={styles.sectionLabel}>LIVE ROOMS</Text>
+      <FlatList
+        data={[0]}
+        keyExtractor={() => "roam-body"}
+        onRefresh={load}
+        refreshing={isLoading}
+        renderItem={() => (
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>LIVE ROOMS</Text>
+              <Text style={styles.seeAll}>See all</Text>
+            </View>
 
-      {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 20 }} color={colors.accent} />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : (
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={rooms}
-          keyExtractor={(r) => r.id}
-          contentContainerStyle={styles.roomsRow}
-          ListEmptyComponent={<Text style={styles.empty}>No rooms yet.</Text>}
-          renderItem={({ item }) => {
-            const isLive = item.status === "LIVE";
-            return (
-              <Pressable
-                style={[styles.roomCard, isLive ? styles.roomCardLive : styles.roomCardIdle]}
-                onPress={() => navigation.navigate("LoopsPlayer", { roomId: item.id })}
-              >
-                <View style={styles.roomStatusRow}>
-                  <View style={[styles.dot, { backgroundColor: isLive ? colors.success : colors.cheer }]} />
-                  <Text style={[styles.roomStatusLabel, { color: isLive ? "#9A938A" : colors.inkFaint }]}>
-                    {isLive ? "Live" : "Soon"}
-                  </Text>
-                </View>
-                <Text style={[styles.roomTitle, { color: isLive ? colors.surfaceRaised : colors.ink }]} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                <Text style={[styles.roomCount, { color: isLive ? "#9A938A" : colors.inkFaint }]}>
-                  {item.participantCount} roaming
-                </Text>
-              </Pressable>
-            );
-          }}
-          onRefresh={load}
-          refreshing={isLoading}
-        />
-      )}
+            {isLoading ? (
+              <ActivityIndicator style={{ marginVertical: 20 }} color={colors.accent} />
+            ) : error ? (
+              <Text style={styles.error}>{error}</Text>
+            ) : (
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={rooms}
+                keyExtractor={(r) => r.id}
+                contentContainerStyle={styles.roomsRow}
+                ListEmptyComponent={<Text style={styles.empty}>No rooms yet.</Text>}
+                renderItem={({ item }) => {
+                  const isLive = item.status === "LIVE";
+                  return (
+                    <Pressable
+                      style={[styles.roomCard, isLive ? styles.roomCardLive : styles.roomCardIdle]}
+                      onPress={() => navigation.navigate("LoopsPlayer", { roomId: item.id })}
+                    >
+                      <View style={styles.roomStatusRow}>
+                        <View style={[styles.dot, { backgroundColor: isLive ? "#9FE8B5" : colors.cheer }]} />
+                        <Text style={[styles.roomStatusLabel, { color: isLive ? "#9A938A" : colors.inkFaint }]}>
+                          {isLive ? "Live" : "Soon"}
+                        </Text>
+                      </View>
+                      <Text style={[styles.roomTitle, { color: isLive ? colors.surfaceRaised : colors.ink }]} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.roomCount, { color: isLive ? "#9A938A" : colors.inkFaint }]}>
+                        {item.participantCount} roaming
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            )}
+
+            <View style={styles.chipsRow}>
+              {CHIPS.map((c) => (
+                <Pressable key={c} onPress={() => setChip(c)} style={[styles.chip, chip === c && styles.chipActive]}>
+                  <Text style={[styles.chipText, chip === c && styles.chipTextActive]}>{c}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.grid}>
+              {GRID_TILES.map((tile, i) => (
+                <LinearGradient
+                  key={i}
+                  colors={tile.colors}
+                  start={{ x: 0.1, y: 0 }}
+                  end={{ x: 0.9, y: 1 }}
+                  style={[styles.gridTile, tile.tall && styles.gridTileTall]}
+                >
+                  {tile.label ? (
+                    <View style={styles.gridBadge}>
+                      <Text style={styles.gridBadgeText}>{tile.label}</Text>
+                    </View>
+                  ) : null}
+                </LinearGradient>
+              ))}
+            </View>
+          </View>
+        )}
+      />
     </View>
   );
 }
@@ -105,17 +166,11 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 16,
   },
-  searchIcon: { color: colors.inkFaint, fontSize: 16 },
   searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.ink },
-  sectionLabel: {
-    fontFamily: fonts.bodySemibold,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    color: colors.inkFaint,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  roomsRow: { paddingHorizontal: 16, gap: 10 },
+  sectionHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 10 },
+  sectionLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint },
+  seeAll: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.accent },
+  roomsRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 20 },
   roomCard: { width: 158, height: 116, padding: 14, borderRadius: 22 },
   roomCardLive: { backgroundColor: colors.ink },
   roomCardIdle: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline },
@@ -124,6 +179,16 @@ const styles = StyleSheet.create({
   roomStatusLabel: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 1 },
   roomTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, marginTop: 24 },
   roomCount: { fontFamily: fonts.body, fontSize: 11, marginTop: 8 },
-  error: { color: colors.cheer, textAlign: "center", marginTop: 20 },
+  chipsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
+  chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 10 },
+  chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  chipText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
+  chipTextActive: { color: colors.surfaceRaised, fontFamily: fonts.bodyBold },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 9 },
+  gridTile: { width: "47.7%", height: 112, borderRadius: 22 },
+  gridTileTall: { height: 233 },
+  gridBadge: { position: "absolute", left: 12, bottom: 12, backgroundColor: "rgba(23,20,18,0.5)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
+  gridBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#fff" },
+  error: { color: colors.cheer, textAlign: "center", marginVertical: 20 },
   empty: { color: colors.inkMuted, paddingHorizontal: 20 },
 });

@@ -16,6 +16,11 @@ export const colors = {
   cheer: "#E2542F",
   cheerTint: "#FDEDE7",
   success: "#3BBF7C",
+  danger: "#C43B2E",
+  chevronMuted: "#C4BCB1",
+  chipMuted: "#F4F0E9",
+  divider: "#F2EDE5",
+  dashedBorder: "#D6CEC2",
 } as const;
 
 export const fonts = {

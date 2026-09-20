@@ -27,6 +27,8 @@
     "expo-secure-store": "~13.0.2",
     "expo-image-picker": "~15.0.7",
     "expo-av": "~14.0.7",
+    "expo-linear-gradient": "~13.0.2",
+    "react-native-svg": "15.2.0",
     "dayjs": "^1.11.13",
     "react-dom": "18.2.0",
     "react-native-web": "~0.19.10",

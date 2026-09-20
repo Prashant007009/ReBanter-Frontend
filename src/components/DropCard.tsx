@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "./Avatar";
+import { ZapIcon, ReplyIcon, RepostIcon, SaveIcon, MoreHorizontalIcon } from "@/assets/icons";
 import { reactToDrop } from "@/api/drops";
 import type { Drop } from "@/api/types";
 
@@ -26,28 +27,41 @@ export function DropCard({ drop }: { drop: Drop }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Avatar handle={drop.author.handle} displayName={drop.author.displayName} avatarUrl={drop.author.avatarUrl} size={38} />
-        <View style={{ flex: 1 }}>
+        <Avatar handle={drop.author.handle} displayName={drop.author.displayName} avatarUrl={drop.author.avatarUrl} size={38} radius={13} />
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.handle}>{drop.author.handle}</Text>
-          <Text style={styles.meta}>
-            {[drop.location, dayjs(drop.createdAt).fromNow()].filter(Boolean).join(" · ")}
-          </Text>
+          <Text style={styles.meta}>{[drop.location, dayjs(drop.createdAt).fromNow()].filter(Boolean).join(" · ")}</Text>
         </View>
+        <MoreHorizontalIcon size={19} color={colors.inkFaint} />
       </View>
 
-      {cover ? <Image source={{ uri: cover.url }} style={styles.media} /> : null}
+      {cover ? (
+        <View style={styles.mediaWrap}>
+          <Image source={{ uri: cover.url }} style={styles.media} />
+          {drop.media.length > 1 ? (
+            <View style={styles.mediaCount}>
+              <Text style={styles.mediaCountText}>1/{drop.media.length}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {drop.caption ? <Text style={styles.caption}>{drop.caption}</Text> : null}
 
       <View style={styles.reactions}>
         <Pressable style={styles.reactionButton} onPress={onCheer}>
-          <Text style={[styles.reactionIcon, cheered && { color: colors.cheer }]}>▲</Text>
+          <ZapIcon size={19} color={colors.cheer} />
           <Text style={styles.reactionCount}>{cheers}</Text>
         </Pressable>
         <View style={styles.reactionButton}>
-          <Text style={styles.reactionIcon}>↩</Text>
+          <ReplyIcon size={19} color={colors.ink} />
           <Text style={styles.reactionCount}>{drop.counts.replies}</Text>
         </View>
+        <View style={styles.reactionButton}>
+          <RepostIcon size={19} color={colors.ink} />
+        </View>
+        <View style={{ flex: 1 }} />
+        <SaveIcon size={19} color={colors.ink} />
       </View>
     </View>
   );
@@ -63,13 +77,15 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     overflow: "hidden",
   },
-  header: { flexDirection: "row", alignItems: "center", gap: 11, padding: 14 },
+  header: { flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
   handle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
   meta: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint, marginTop: 2 },
+  mediaWrap: { position: "relative" },
   media: { width: "100%", height: 300, backgroundColor: colors.hairline },
-  caption: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.ink, padding: 14, paddingBottom: 6 },
-  reactions: { flexDirection: "row", alignItems: "center", gap: 18, padding: 14 },
+  mediaCount: { position: "absolute", right: 12, top: 12, backgroundColor: "rgba(23,20,18,0.45)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
+  mediaCountText: { fontFamily: fonts.bodyBold, fontSize: 10, color: "#fff" },
+  caption: { fontFamily: fonts.body, fontSize: 14, lineHeight: 22, color: colors.ink, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
+  reactions: { flexDirection: "row", alignItems: "center", gap: 18, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 },
   reactionButton: { flexDirection: "row", alignItems: "center", gap: 7 },
-  reactionIcon: { fontSize: 16, color: colors.ink },
   reactionCount: { fontFamily: fonts.displaySemibold, fontSize: 13, color: colors.ink },
 });

@@ -1,21 +1,19 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
-// Deterministic pastel fallback per handle, echoing the gradient avatar
-// tiles in the design for users without a real photo yet.
-const PALETTE = ["#F3DCD0", "#DEEBDF", "#E2E4EA", "#F6EBD3", "#EFE6FF"];
-const INK_FOR: Record<string, string> = {
-  "#F3DCD0": "#94553A",
-  "#DEEBDF": "#3D7A5E",
-  "#E2E4EA": "#4B5B78",
-  "#F6EBD3": "#9A7420",
-  "#EFE6FF": "#6D53B8",
-};
+// Exact avatar gradient/ink pairs pulled from the design (145deg stops).
+const PALETTE = [
+  { stops: ["#F3DCD0", "#D9AE97"] as const, ink: "#94553A" }, // peach
+  { stops: ["#DEEBDF", "#AEC8B3"] as const, ink: "#3D7A5E" }, // green
+  { stops: ["#E2E4EA", "#BFC6D2"] as const, ink: "#4B5B78" }, // grey
+  { stops: ["#F6EBD3", "#E2C899"] as const, ink: "#9A7420" }, // gold
+  { stops: ["#EFE6FF", "#D3C4F7"] as const, ink: "#6D53B8" }, // purple
+] as const;
 
 function paletteFor(seed: string) {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  const bg = PALETTE[hash % PALETTE.length];
-  return { bg, ink: INK_FOR[bg] };
+  return PALETTE[hash % PALETTE.length];
 }
 
 export function Avatar({
@@ -43,7 +41,7 @@ export function Avatar({
     );
   }
 
-  const { bg, ink } = paletteFor(handle);
+  const { stops, ink } = paletteFor(handle);
   const initials = displayName
     .split(" ")
     .map((p) => p[0])
@@ -52,9 +50,14 @@ export function Avatar({
     .toUpperCase();
 
   return (
-    <View style={[styles.fallback, { width: size, height: size, borderRadius, backgroundColor: bg }]}>
+    <LinearGradient
+      colors={stops}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={[styles.fallback, { width: size, height: size, borderRadius }]}
+    >
       <Text style={{ color: ink, fontWeight: "700", fontSize: size * 0.36 }}>{initials}</Text>
-    </View>
+    </LinearGradient>
   );
 }
 
