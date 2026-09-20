@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "./Avatar";
-import { ReplyModal } from "./ReplyModal";
+import { CommentsModal } from "./CommentsModal";
 import { ZapIcon, ReplyIcon, RepostIcon, SaveIcon, MoreHorizontalIcon } from "@/assets/icons";
 import { reactToDrop } from "@/api/drops";
 import type { Drop } from "@/api/types";
@@ -14,7 +14,7 @@ export function DropCard({ drop }: { drop: Drop }) {
   const [reposted, setReposted] = useState(false);
   const [saved, setSaved] = useState(false);
   const [replyCount, setReplyCount] = useState(drop.counts.replies);
-  const [replyOpen, setReplyOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const cover = drop.media[0];
 
@@ -96,7 +96,7 @@ export function DropCard({ drop }: { drop: Drop }) {
           <ZapIcon size={19} color={colors.cheer} />
           <Text style={styles.reactionCount}>{cheers}</Text>
         </Pressable>
-        <Pressable style={styles.reactionButton} onPress={() => setReplyOpen(true)}>
+        <Pressable style={styles.reactionButton} onPress={() => setCommentsOpen(true)}>
           <ReplyIcon size={19} color={colors.ink} />
           <Text style={styles.reactionCount}>{replyCount}</Text>
         </Pressable>
@@ -109,11 +109,11 @@ export function DropCard({ drop }: { drop: Drop }) {
         </Pressable>
       </View>
 
-      <ReplyModal
-        visible={replyOpen}
+      <CommentsModal
+        visible={commentsOpen}
         dropId={drop.id}
-        onClose={() => setReplyOpen(false)}
-        onReplied={() => setReplyCount((c) => c + 1)}
+        onClose={() => setCommentsOpen(false)}
+        onCommented={() => setReplyCount((c) => c + 1)}
       />
     </View>
   );
