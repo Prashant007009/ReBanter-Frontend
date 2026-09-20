@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { StreamTabIcon, RoamTabIcon, PulseTabIcon, PlusIcon } from "@/assets/icons";
 import { colors, fonts } from "@/theme/colors";
 import { useSession } from "@/session/SessionContext";
 import { Avatar } from "@/components/Avatar";
+import { getPulse } from "@/api/pulse";
 
 const TAB_ICONS = { Stream: StreamTabIcon, Roam: RoamTabIcon, Pulse: PulseTabIcon } as const;
 
@@ -14,6 +16,27 @@ const TAB_ICONS = { Stream: StreamTabIcon, Roam: RoamTabIcon, Pulse: PulseTabIco
  */
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { user } = useSession();
+  const [hasUnreadPulse, setHasUnreadPulse] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const check = () => {
+      getPulse()
+        .then((res) => {
+          if (!cancelled) setHasUnreadPulse(res.items.some((n) => !n.read));
+        })
+        .catch(() => {});
+    };
+    check();
+    // No realtime push client yet, so poll lightly and also recheck on every
+    // tab switch (covers "just read Pulse" and "a new notification landed").
+    const interval = setInterval(check, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [user, state.index]);
 
   return (
     <View style={styles.container}>
@@ -66,6 +89,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
             active={isFocused}
             onPress={() => navigation.navigate(route.name)}
             icon={(color, strokeWidth) => <Icon size={20} color={color} strokeWidth={strokeWidth} />}
+            badge={route.name === "Pulse" && hasUnreadPulse}
           />
         );
       })}
@@ -78,17 +102,20 @@ function TabSlot({
   active,
   onPress,
   icon,
+  badge,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
   icon: (color: string, strokeWidth: number) => React.ReactNode;
+  badge?: boolean;
 }) {
   const color = active ? colors.accent : colors.inkSubtle;
   return (
     <View style={styles.slot}>
       <Pressable onPress={onPress} style={[styles.pill, active && styles.pillActive]}>
         {icon(color, active ? 2.2 : 1.7)}
+        {badge ? <View style={styles.tabDot} /> : null}
       </Pressable>
       <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
     </View>
@@ -109,6 +136,17 @@ const styles = StyleSheet.create({
   slot: { flex: 1, alignItems: "center", gap: 6 },
   pill: { width: 50, height: 28, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   pillActive: { backgroundColor: colors.accentTint },
+  tabDot: {
+    position: "absolute",
+    top: 3,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.cheer,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceRaised,
+  },
   label: { fontSize: 10, fontFamily: fonts.bodyMedium, color: colors.inkSubtle },
   labelActive: { fontFamily: fonts.bodyBold, color: colors.accent },
   meAvatarRing: { width: 23, height: 23, borderRadius: 8, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
