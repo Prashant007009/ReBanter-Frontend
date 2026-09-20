@@ -15,6 +15,12 @@ import type { RootStackParamList } from "@/navigation/types";
 const TABS = ["Drops", "Loops", "Pinned", "Flickers"] as const;
 type Tab = (typeof TABS)[number];
 
+function GridImage({ uri }: { uri: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <View style={[styles.gridTile, styles.gridTileFallback]} />;
+  return <Image source={{ uri }} style={styles.gridTile} resizeMode="cover" onError={() => setFailed(true)} />;
+}
+
 export function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useSession();
@@ -47,8 +53,12 @@ export function ProfileScreen() {
         <View style={styles.coverTopRow}>
           <Text style={styles.coverHandle}>@{user.handle}</Text>
           <View style={styles.coverIcons}>
-            <RepostIcon size={20} color={colors.surfaceRaised} strokeWidth={1.9} />
-            <HamburgerIcon size={20} color={colors.surfaceRaised} strokeWidth={1.9} />
+            <Pressable hitSlop={10} onPress={() => Share.share({ message: `Come banter with me — @${user.handle} on ReBanter` })}>
+              <RepostIcon size={20} color={colors.surfaceRaised} strokeWidth={1.9} />
+            </Pressable>
+            <Pressable hitSlop={10} onPress={() => navigation.navigate("Settings")}>
+              <HamburgerIcon size={20} color={colors.surfaceRaised} strokeWidth={1.9} />
+            </Pressable>
           </View>
         </View>
         <Text style={styles.coverName}>
@@ -112,12 +122,22 @@ export function ProfileScreen() {
               ))}
             </View>
 
-            {tab === "Drops" && isLoading ? <ActivityIndicator style={{ marginTop: 14 }} color={colors.accent} /> : null}
-            {tab === "Drops" && !isLoading && myDrops.length === 0 ? <Text style={styles.empty}>No drops yet.</Text> : null}
-            {tab !== "Drops" ? <Text style={styles.empty}>Nothing here yet.</Text> : null}
+            {tab === "Drops" && isLoading ? <ActivityIndicator style={{ marginTop: 24 }} color={colors.accent} /> : null}
+            {tab === "Drops" && !isLoading && myDrops.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No drops yet</Text>
+                <Text style={styles.emptySubtitle}>Tap the Drop button to share your first one.</Text>
+              </View>
+            ) : null}
+            {tab !== "Drops" ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Nothing here yet</Text>
+                <Text style={styles.emptySubtitle}>{tab} you save will show up here.</Text>
+              </View>
+            ) : null}
           </View>
         }
-        renderItem={({ item }) => (item.media[0] ? <Image source={{ uri: item.media[0].url }} style={styles.gridTile} /> : <View style={styles.gridTile} />)}
+        renderItem={({ item }) => (item.media[0] ? <GridImage uri={item.media[0].url} /> : <View style={styles.gridTile} />)}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
     </View>
@@ -149,6 +169,9 @@ const styles = StyleSheet.create({
   tabText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.inkSubtle },
   tabTextActive: { fontFamily: fonts.bodyBold, color: colors.ink },
   tabIndicator: { height: 2, width: "100%", backgroundColor: colors.ink, marginTop: 10 },
-  gridTile: { width: "33.33%", aspectRatio: 1, backgroundColor: colors.hairline, margin: 1, borderRadius: 14 },
-  empty: { color: colors.inkMuted, textAlign: "center", marginTop: 20, paddingHorizontal: 32 },
+  gridTile: { width: "33.33%", aspectRatio: 1, backgroundColor: colors.hairline, margin: 3, borderRadius: 14 },
+  gridTileFallback: { alignItems: "center", justifyContent: "center" },
+  emptyState: { alignItems: "center", paddingTop: 40, paddingHorizontal: 40 },
+  emptyTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.ink },
+  emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 6, lineHeight: 19 },
 });
