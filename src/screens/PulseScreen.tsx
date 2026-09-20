@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import { ZapIcon, UserPlusIcon, ReplyIcon, MentionIcon, UserIcon } from "@/assets/icons";
 import { getPulse, markAllRead } from "@/api/pulse";
 import { acceptCrewRequest, skipCrewRequest } from "@/api/crew";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Notification } from "@/api/types";
 
 const FILTERS = ["All", "Cheers", "Crew", "Mentions"] as const;
@@ -91,6 +92,7 @@ export function PulseScreen() {
   useEffect(() => {
     load();
   }, [load]);
+  useRefreshOnFocus(load);
 
   const filtered = useMemo(() => items.filter((n) => matchesFilter(n, filter)), [items, filter]);
   const today = useMemo(() => filtered.filter((n) => dayjs(n.createdAt).isAfter(dayjs().startOf("day"))), [filtered]);

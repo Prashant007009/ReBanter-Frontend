@@ -8,6 +8,7 @@ import { BantersScreen } from "@/screens/BantersScreen";
 import { BanterThreadScreen } from "@/screens/BanterThreadScreen";
 import { NewDropScreen } from "@/screens/NewDropScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
+import { EditProfileScreen } from "@/screens/EditProfileScreen";
 import { useSession } from "@/session/SessionContext";
 import { colors } from "@/theme/colors";
 import type { RootStackParamList } from "./types";
@@ -22,6 +23,7 @@ function AppNavigator() {
       <Stack.Screen name="Banters" component={BantersScreen} />
       <Stack.Screen name="BanterThread" component={BanterThreadScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="NewDrop" component={NewDropScreen} options={{ presentation: "modal" }} />
     </Stack.Navigator>
   );

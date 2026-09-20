@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { RepostIcon, HamburgerIcon } from "@/assets/icons";
 import { useSession } from "@/session/SessionContext";
 import { getFeed } from "@/api/drops";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Drop } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
 
@@ -34,6 +35,7 @@ export function ProfileScreen() {
   useEffect(() => {
     load();
   }, [load]);
+  useRefreshOnFocus(load);
 
   if (!user) return null;
 
@@ -89,10 +91,13 @@ export function ProfileScreen() {
               </View>
 
               <View style={styles.actionsRow}>
-                <Pressable style={styles.editButton} onPress={() => navigation.navigate("Settings")}>
+                <Pressable style={styles.editButton} onPress={() => navigation.navigate("EditProfile")}>
                   <Text style={styles.editButtonText}>Edit profile</Text>
                 </Pressable>
-                <Pressable style={styles.shareButton}>
+                <Pressable
+                  style={styles.shareButton}
+                  onPress={() => Share.share({ message: `Come banter with me — @${user.handle} on ReBanter` })}
+                >
                   <Text style={styles.shareButtonText}>Share card</Text>
                 </Pressable>
               </View>

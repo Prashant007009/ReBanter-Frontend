@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { Toggle } from "@/components/Toggle";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/assets/icons";
 import { useSession } from "@/session/SessionContext";
 import { updateMe } from "@/api/users";
+import type { RootStackParamList } from "@/navigation/types";
 
 function SettingsRow({ label, value, chevron = true, onPress }: { label: string; value?: string; chevron?: boolean; onPress?: () => void }) {
   return (
@@ -19,7 +21,7 @@ function SettingsRow({ label, value, chevron = true, onPress }: { label: string;
 }
 
 export function SettingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, logOut, refreshMe } = useSession();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,7 +71,7 @@ export function SettingsScreen() {
 
       <Text style={styles.sectionLabel}>ACCOUNT</Text>
       <View style={styles.section}>
-        <SettingsRow label="Edit profile" />
+        <SettingsRow label="Edit profile" onPress={() => navigation.navigate("EditProfile")} />
         <View style={styles.divider} />
         <SettingsRow label="Who can banter you" value={user.whoCanBanter === "CREW_ONLY" ? "Crew only" : "Everyone"} onPress={toggleWhoCanBanter} />
         <View style={styles.divider} />

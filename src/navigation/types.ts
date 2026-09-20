@@ -17,6 +17,7 @@ export type RootStackParamList = {
   BanterThread: { banterId: string; handle: string };
   NewDrop: undefined;
   Settings: undefined;
+  EditProfile: undefined;
 };
 
 declare global {

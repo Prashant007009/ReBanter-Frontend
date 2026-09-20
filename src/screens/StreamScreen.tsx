@@ -11,6 +11,7 @@ import { getFeed } from "@/api/drops";
 import { getMyCrews } from "@/api/crew";
 import { getPulse } from "@/api/pulse";
 import { useSession } from "@/session/SessionContext";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Drop, CrewSummary } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
 
@@ -44,6 +45,7 @@ export function StreamScreen() {
   useEffect(() => {
     load();
   }, [load]);
+  useRefreshOnFocus(load);
 
   const activeAuthorIds = useMemo(() => new Set(drops.map((d) => d.author.id)), [drops]);
 
@@ -83,12 +85,12 @@ export function StreamScreen() {
               keyExtractor={(m) => m.id}
               contentContainerStyle={styles.stories}
               ListHeaderComponent={
-                <View style={styles.storyItem}>
+                <Pressable style={styles.storyItem} onPress={() => navigation.navigate("NewDrop")}>
                   <View style={styles.addTile}>
                     <PlusIcon size={18} color={colors.accent} strokeWidth={2.4} />
                   </View>
                   <Text style={styles.storyLabelMuted}>Add</Text>
-                </View>
+                </Pressable>
               }
               renderItem={({ item }) => {
                 const active = activeAuthorIds.has(item.id);

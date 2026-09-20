@@ -1,13 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts } from "@/theme/colors";
 import { PinIcon, UsersIcon, VideoIcon, ClockIcon } from "@/assets/icons";
 import { Toggle } from "@/components/Toggle";
+import { PeoplePickerModal } from "@/components/PeoplePickerModal";
 import { uploadLocalAsset } from "@/api/media";
 import { apiFetch } from "@/api/client";
+import type { UserSummary } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
+
+function extractHashtags(text: string): string[] {
+  const matches = text.match(/#\w+/g);
+  return matches ? [...new Set(matches)] : [];
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, "NewDrop">;
 
@@ -15,9 +22,16 @@ export function NewDropScreen({ navigation }: Props) {
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [caption, setCaption] = useState("");
   const [place, setPlace] = useState("");
-  const [alsoLoop, setAlsoLoop] = useState(true);
+  const [alsoLoop, setAlsoLoop] = useState(false);
+  const [taggedCrew, setTaggedCrew] = useState<UserSummary[]>([]);
+  const [crewPickerVisible, setCrewPickerVisible] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hashtags = useMemo(() => extractHashtags(caption), [caption]);
+
+  function toggleCrewTag(person: UserSummary) {
+    setTaggedCrew((prev) => (prev.some((p) => p.id === person.id) ? prev.filter((p) => p.id !== person.id) : [...prev, person]));
+  }
 
   async function pickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -44,10 +58,12 @@ export function NewDropScreen({ navigation }: Props) {
     try {
       const contentType = image.mimeType ?? "image/jpeg";
       const url = await uploadLocalAsset(image.uri, contentType);
+      const mentions = taggedCrew.map((p) => `@${p.handle}`).join(" ");
+      const fullCaption = [caption.trim(), mentions].filter(Boolean).join(" ");
       await apiFetch("/api/drops", {
         method: "POST",
         body: JSON.stringify({
-          caption: caption.trim() || undefined,
+          caption: fullCaption || undefined,
           location: place.trim() || undefined,
           media: [{ url, kind: "image" }],
         }),
@@ -91,8 +107,15 @@ export function NewDropScreen({ navigation }: Props) {
           multiline
         />
         <View style={styles.captionFooter}>
-          <Text style={styles.hashtag}>#lisbon</Text>
-          <Text style={styles.hashtag}>#goldenhour</Text>
+          {hashtags.length > 0 ? (
+            hashtags.map((tag) => (
+              <Text key={tag} style={styles.hashtag}>
+                {tag}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.hashtagHint}>Type #hashtags in your caption</Text>
+          )}
           <View style={{ flex: 1 }} />
           <Text style={styles.charCount}>{caption.length} / 280</Text>
         </View>
@@ -110,11 +133,11 @@ export function NewDropScreen({ navigation }: Props) {
             onChangeText={setPlace}
           />
         </View>
-        <View style={[styles.optionRow, styles.optionDivider]}>
+        <Pressable style={[styles.optionRow, styles.optionDivider]} onPress={() => setCrewPickerVisible(true)}>
           <UsersIcon size={19} color={colors.ink} />
           <Text style={styles.optionLabel}>Tag crew</Text>
-          <Text style={styles.optionValue}>2</Text>
-        </View>
+          <Text style={styles.optionValue}>{taggedCrew.length > 0 ? taggedCrew.length : "None"}</Text>
+        </Pressable>
         <View style={[styles.optionRow, styles.optionDivider]}>
           <VideoIcon size={19} color={colors.ink} strokeWidth={1.8} />
           <Text style={styles.optionLabel}>Also share as Loop</Text>
@@ -128,6 +151,14 @@ export function NewDropScreen({ navigation }: Props) {
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <PeoplePickerModal
+        visible={crewPickerVisible}
+        title="Tag crew"
+        onClose={() => setCrewPickerVisible(false)}
+        onSelect={toggleCrewTag}
+        selectedIds={taggedCrew.map((p) => p.id)}
+      />
     </View>
   );
 }
@@ -155,6 +186,7 @@ const styles = StyleSheet.create({
   captionInput: { fontFamily: fonts.body, fontSize: 15, color: colors.ink, minHeight: 44 },
   captionFooter: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.divider },
   hashtag: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.accent, backgroundColor: colors.accentTint, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  hashtagHint: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint },
   charCount: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
   optionsCard: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, overflow: "hidden" },
   optionRow: { flexDirection: "row", alignItems: "center", gap: 13, padding: 15 },

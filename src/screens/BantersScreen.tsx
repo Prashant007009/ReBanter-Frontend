@@ -6,9 +6,11 @@ import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { ChevronLeftIcon, SearchIcon, PlusIcon } from "@/assets/icons";
-import { getBanters } from "@/api/banters";
+import { PeoplePickerModal } from "@/components/PeoplePickerModal";
+import { getBanters, createBanter } from "@/api/banters";
 import { useSession } from "@/session/SessionContext";
-import type { BanterListItem } from "@/api/types";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import type { BanterListItem, UserSummary } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
 
 export function BantersScreen() {
@@ -18,6 +20,8 @@ export function BantersScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [startingBanterWith, setStartingBanterWith] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -34,6 +38,19 @@ export function BantersScreen() {
   useEffect(() => {
     load();
   }, [load]);
+  useRefreshOnFocus(load);
+
+  async function onStartBanter(person: UserSummary) {
+    if (startingBanterWith) return;
+    setStartingBanterWith(person.id);
+    try {
+      const banter = await createBanter(person.id);
+      setPickerVisible(false);
+      navigation.navigate("BanterThread", { banterId: banter.id, handle: person.handle });
+    } finally {
+      setStartingBanterWith(null);
+    }
+  }
 
   const filtered = banters.filter((b) => {
     if (!query.trim()) return true;
@@ -52,9 +69,9 @@ export function BantersScreen() {
           </Pressable>
           <Text style={styles.title}>Banters</Text>
         </View>
-        <View style={styles.newButton}>
+        <Pressable style={styles.newButton} onPress={() => setPickerVisible(true)}>
           <PlusIcon size={18} color={colors.surfaceRaised} strokeWidth={2.2} />
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.searchBar}>
@@ -85,12 +102,12 @@ export function BantersScreen() {
                   <Text style={styles.presenceLabel}>{p.handle}</Text>
                 </View>
               ))}
-              <View style={styles.presenceItem}>
+              <Pressable style={styles.presenceItem} onPress={() => setPickerVisible(true)}>
                 <View style={styles.newTile}>
                   <PlusIcon size={18} color={colors.inkFaint} strokeWidth={2} />
                 </View>
                 <Text style={styles.presenceLabel}>New</Text>
-              </View>
+              </Pressable>
             </View>
 
             {isLoading ? (
@@ -130,6 +147,13 @@ export function BantersScreen() {
             )}
           </View>
         )}
+      />
+
+      <PeoplePickerModal
+        visible={pickerVisible}
+        title="Start a banter"
+        onClose={() => setPickerVisible(false)}
+        onSelect={onStartBanter}
       />
     </View>
   );

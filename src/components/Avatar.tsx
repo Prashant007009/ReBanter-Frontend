@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Image, StyleSheet, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -29,14 +30,16 @@ export function Avatar({
   size?: number;
   radius?: number;
 }) {
+  const [failed, setFailed] = useState(false);
   const borderRadius = radius ?? size * 0.32;
 
-  if (avatarUrl) {
+  if (avatarUrl && !failed) {
     return (
       <Image
         source={{ uri: avatarUrl }}
         style={{ width: size, height: size, borderRadius }}
         accessibilityLabel={displayName}
+        onError={() => setFailed(true)}
       />
     );
   }
