@@ -45,15 +45,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const token = await getAccessToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
       try {
+        const token = await getAccessToken();
+        if (!token) return;
         await loadMe();
       } catch {
-        // Token invalid and refresh failed (handled inside apiFetch) — stay signed out.
+        // No token, invalid token, refresh failed, or storage unavailable —
+        // any of these just means "stay signed out," never "hang forever."
       } finally {
         setIsLoading(false);
       }
