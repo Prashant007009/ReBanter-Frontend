@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { colors } from "@/theme/colors";
+import { colors, fonts } from "@/theme/colors";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { useSession } from "@/session/SessionContext";
 import type { AuthStackParamList } from "@/navigation/types";
 
@@ -28,7 +29,7 @@ export function SignUpScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenGradient style={styles.container}>
       <Text style={styles.brand}>
         ReBanter<Text style={{ color: colors.accent }}>.</Text>
       </Text>
@@ -67,7 +68,7 @@ export function SignUpScreen({ navigation }: Props) {
         disabled={isSubmitting || !handle || !displayName || password.length < 8}
       >
         {isSubmitting ? (
-          <ActivityIndicator color={colors.surfaceRaised} />
+          <ActivityIndicator color={colors.ink} />
         ) : (
           <Text style={styles.primaryButtonText}>Create account</Text>
         )}
@@ -76,14 +77,14 @@ export function SignUpScreen({ navigation }: Props) {
       <Pressable onPress={() => navigation.navigate("SignIn")}>
         <Text style={styles.link}>Already have an account? Sign in</Text>
       </Pressable>
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.canvas, padding: 24, justifyContent: "center", gap: 12 },
-  brand: { fontSize: 34, fontWeight: "700", color: colors.ink, marginBottom: 4 },
-  subtitle: { fontSize: 15, color: colors.inkMuted, marginBottom: 20 },
+  container: { flex: 1, padding: 24, justifyContent: "center", gap: 12 },
+  brand: { fontFamily: fonts.display, fontSize: 34, color: colors.onDark, marginBottom: 4 },
+  subtitle: { fontFamily: fonts.body, fontSize: 15, color: colors.onDarkMuted, marginBottom: 20 },
   input: {
     height: 50,
     borderRadius: 16,
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.hairline,
     paddingHorizontal: 16,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.ink,
   },
@@ -102,7 +104,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryButtonText: { color: colors.surfaceRaised, fontWeight: "700", fontSize: 15 },
-  error: { color: colors.cheer, fontSize: 13 },
-  link: { marginTop: 16, color: colors.accent, fontWeight: "600", textAlign: "center" },
+  primaryButtonText: { fontFamily: fonts.bodyBold, color: colors.ink, fontSize: 15 },
+  error: { fontFamily: fonts.bodyMedium, color: colors.cheer, fontSize: 13 },
+  link: { fontFamily: fonts.bodySemibold, marginTop: 16, color: colors.accent, textAlign: "center" },
 });

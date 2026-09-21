@@ -1,5 +1,6 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TabNavigator } from "./TabNavigator";
 import { AuthNavigator } from "./AuthNavigator";
@@ -10,11 +11,17 @@ import { NewDropScreen } from "@/screens/NewDropScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { EditProfileScreen } from "@/screens/EditProfileScreen";
 import { UserProfileScreen } from "@/screens/UserProfileScreen";
+import { SplashScreen } from "@/components/SplashScreen";
 import { useSession } from "@/session/SessionContext";
 import { colors } from "@/theme/colors";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: "transparent" },
+};
 
 function AppNavigator() {
   return (
@@ -41,16 +48,18 @@ export function RootNavigator() {
   const { user, isLoading } = useSession();
 
   if (isLoading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.accent} size="large" />
-      </View>
-    );
+    return <SplashScreen />;
   }
 
-  return <NavigationContainer>{user ? <AppNavigator /> : <AuthNavigator />}</NavigationContainer>;
+  return (
+    <LinearGradient colors={colors.canvasGradientColors} style={styles.root}>
+      <NavigationContainer theme={navigationTheme}>
+        {user ? <AppNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvas },
+  root: { flex: 1 },
 });

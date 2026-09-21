@@ -6,32 +6,23 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, fonts } from "@/theme/colors";
 import { SearchIcon } from "@/assets/icons";
 import { Avatar } from "@/components/Avatar";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { getRooms } from "@/api/rooms";
 import { search, type SearchResults } from "@/api/search";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Room } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
 
-const CHIPS = ["For you", "Loops", "Makers", "Food"] as const;
+const CHIPS = ["Loops", "Makers", "Food"] as const;
 
-// Decorative browse-grid tiles — there's no generic content-discovery
-// endpoint yet (out of scope per the backend's Rooms & loops issue), so
-// this mirrors the design's placeholder gradient tiles rather than faking
-// content that doesn't exist server-side.
-interface GridTile {
-  colors: readonly [string, string];
-  tall: boolean;
-  label?: string;
-}
-
-const GRID_TILES: GridTile[] = [
-  { colors: ["#E4DFF8", "#B8ADE9"], tall: true, label: "Loop · 0:14" },
-  { colors: ["#F3DCD0", "#E0AF96"], tall: false },
-  { colors: ["#DEEBDF", "#AEC8B3"], tall: false },
-  { colors: ["#E2E4EA", "#B9BFCB"], tall: false },
-  { colors: ["#F6EBD3", "#E2C899"], tall: true },
-  { colors: ["#EFE3F5", "#CDB4DC"], tall: false },
-];
+// There's no generic "for you" loops feed yet (out of scope per the
+// backend's Rooms & loops issue), so this mirrors the design's single
+// placeholder tile rather than faking a feed that doesn't exist server-side.
+const FEATURED_LOOP = {
+  colors: ["#4B2FE0", "#8C6BFF"] as const,
+  duration: "0:14",
+  caption: "A quick experiment in motion",
+};
 
 export function RoamScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -39,7 +30,7 @@ export function RoamScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [chip, setChip] = useState<(typeof CHIPS)[number]>("For you");
+  const [chip, setChip] = useState<(typeof CHIPS)[number]>("Loops");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -85,19 +76,20 @@ export function RoamScreen() {
   const isSearchMode = query.trim().length > 0;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Roam</Text>
-
-      <View style={styles.searchBar}>
-        <SearchIcon size={18} color={colors.inkFaint} strokeWidth={2} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="People, tags, rooms"
-          placeholderTextColor={colors.inkFaint}
-          value={query}
-          onChangeText={setQuery}
-          autoCapitalize="none"
-        />
+    <ScreenGradient style={styles.container}>
+      <View style={styles.headerBlock}>
+        <Text style={styles.title}>Roam</Text>
+        <View style={styles.searchBar}>
+          <SearchIcon size={18} color={colors.inkMuted} strokeWidth={2} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="People, tags, rooms"
+            placeholderTextColor={colors.inkMuted}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+          />
+        </View>
       </View>
 
       {isSearchMode ? (
@@ -109,12 +101,12 @@ export function RoamScreen() {
               {isSearching ? (
                 <ActivityIndicator style={{ marginTop: 20 }} color={colors.accent} />
               ) : !results || (results.users.length === 0 && results.rooms.length === 0) ? (
-                <Text style={styles.empty}>No results for "{query.trim()}".</Text>
+                <Text style={[styles.empty, { paddingHorizontal: 16 }]}>No results for "{query.trim()}".</Text>
               ) : (
                 <>
                   {results.users.length > 0 ? (
                     <>
-                      <Text style={styles.sectionLabel}>PEOPLE</Text>
+                      <Text style={[styles.sectionTitle, { paddingHorizontal: 16, marginBottom: 10 }]}>People</Text>
                       <View style={styles.resultsCard}>
                         {results.users.map((u, i) => (
                           <Pressable
@@ -135,7 +127,7 @@ export function RoamScreen() {
 
                   {results.rooms.length > 0 ? (
                     <>
-                      <Text style={styles.sectionLabel}>ROOMS</Text>
+                      <Text style={[styles.sectionTitle, { paddingHorizontal: 16, marginBottom: 10 }]}>Rooms</Text>
                       <View style={styles.resultsCard}>
                         {results.rooms.map((r, i) => (
                           <Pressable
@@ -163,127 +155,138 @@ export function RoamScreen() {
           keyExtractor={() => "roam-body"}
           onRefresh={load}
           refreshing={isLoading}
+          contentContainerStyle={{ paddingBottom: 24 }}
           renderItem={() => (
             <View>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionLabel}>LIVE ROOMS</Text>
-                <Text style={styles.seeAll}>See all</Text>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Live Rooms</Text>
+
+                {isLoading ? (
+                  <ActivityIndicator style={{ marginVertical: 20 }} color={colors.accent} />
+                ) : error ? (
+                  <Text style={styles.error}>{error}</Text>
+                ) : rooms.length === 0 ? (
+                  <Text style={styles.empty}>No rooms yet.</Text>
+                ) : (
+                  <View style={styles.roomsList}>
+                    {rooms.map((room) => {
+                      const isLive = room.status === "LIVE";
+                      return (
+                        <Pressable
+                          key={room.id}
+                          style={styles.roomRow}
+                          onPress={() => navigation.navigate("LoopsPlayer", { roomId: room.id })}
+                        >
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={styles.roomTitle} numberOfLines={1}>
+                              {room.title}
+                            </Text>
+                            <View style={styles.roomStatusRow}>
+                              <View style={[styles.dot, { backgroundColor: isLive ? colors.cheer : colors.chevronMuted }]} />
+                              <Text style={styles.roomCount}>
+                                {room.participantCount} {isLive ? "roaming" : "waiting"}
+                              </Text>
+                            </View>
+                          </View>
+                          {isLive ? (
+                            <View style={styles.joinButton}>
+                              <Text style={styles.joinButtonText}>Join</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.notifyButton}>
+                              <Text style={styles.notifyButtonText}>Notify</Text>
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
 
-              {isLoading ? (
-                <ActivityIndicator style={{ marginVertical: 20 }} color={colors.accent} />
-              ) : error ? (
-                <Text style={styles.error}>{error}</Text>
-              ) : (
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  data={rooms}
-                  keyExtractor={(r) => r.id}
-                  contentContainerStyle={styles.roomsRow}
-                  ListEmptyComponent={<Text style={styles.empty}>No rooms yet.</Text>}
-                  renderItem={({ item }) => {
-                    const isLive = item.status === "LIVE";
-                    return (
-                      <Pressable
-                        style={[styles.roomCard, isLive ? styles.roomCardLive : styles.roomCardIdle]}
-                        onPress={() => navigation.navigate("LoopsPlayer", { roomId: item.id })}
-                      >
-                        <View style={styles.roomStatusRow}>
-                          <View style={[styles.dot, { backgroundColor: isLive ? "#9FE8B5" : colors.cheer }]} />
-                          <Text style={[styles.roomStatusLabel, { color: isLive ? "#9A938A" : colors.inkFaint }]}>
-                            {isLive ? "Live" : "Soon"}
-                          </Text>
-                        </View>
-                        <Text style={[styles.roomTitle, { color: isLive ? colors.surfaceRaised : colors.ink }]} numberOfLines={2}>
-                          {item.title}
-                        </Text>
-                        <Text style={[styles.roomCount, { color: isLive ? "#9A938A" : colors.inkFaint }]}>
-                          {item.participantCount} roaming
-                        </Text>
-                      </Pressable>
-                    );
-                  }}
-                />
-              )}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>For You</Text>
 
-              <View style={styles.chipsRow}>
-                {CHIPS.map((c) => (
-                  <Pressable key={c} onPress={() => setChip(c)} style={[styles.chip, chip === c && styles.chipActive]}>
-                    <Text style={[styles.chipText, chip === c && styles.chipTextActive]}>{c}</Text>
-                  </Pressable>
-                ))}
-              </View>
+                <View style={styles.chipsRow}>
+                  {CHIPS.map((c) => (
+                    <Pressable key={c} onPress={() => setChip(c)} style={[styles.chip, chip === c && styles.chipActive]}>
+                      <Text style={[styles.chipText, chip === c && styles.chipTextActive]}>{c}</Text>
+                    </Pressable>
+                  ))}
+                </View>
 
-              <View style={styles.grid}>
-                {GRID_TILES.map((tile, i) => (
-                  <LinearGradient
-                    key={i}
-                    colors={tile.colors}
-                    start={{ x: 0.1, y: 0 }}
-                    end={{ x: 0.9, y: 1 }}
-                    style={[styles.gridTile, tile.tall && styles.gridTileTall]}
-                  >
-                    {tile.label ? (
-                      <View style={styles.gridBadge}>
-                        <Text style={styles.gridBadgeText}>{tile.label}</Text>
-                      </View>
-                    ) : null}
-                  </LinearGradient>
-                ))}
+                <LinearGradient
+                  colors={FEATURED_LOOP.colors}
+                  start={{ x: 0.1, y: 0 }}
+                  end={{ x: 0.9, y: 1 }}
+                  style={styles.featuredTile}
+                >
+                  <View style={styles.durationBadge}>
+                    <Text style={styles.durationBadgeText}>{FEATURED_LOOP.duration}</Text>
+                  </View>
+                  <Text style={styles.featuredCaption}>{FEATURED_LOOP.caption}</Text>
+                </LinearGradient>
               </View>
             </View>
           )}
         />
       )}
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface, paddingTop: 20 },
-  title: { fontFamily: fonts.display, fontSize: 30, color: colors.ink, paddingHorizontal: 20, marginBottom: 14 },
+  container: { flex: 1 },
+  headerBlock: { gap: 12, padding: 16 },
+  title: { fontFamily: fonts.display, fontSize: 28, color: colors.ink },
   searchBar: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    height: 48,
-    borderRadius: 16,
+    height: 42,
+    borderRadius: 8,
     backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
     borderColor: colors.hairline,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: 12,
   },
   searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.ink },
-  sectionHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 10 },
-  sectionLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, paddingHorizontal: 20, marginBottom: 10 },
-  seeAll: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.accent },
-  roomsRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 20 },
-  roomCard: { width: 158, height: 116, padding: 14, borderRadius: 22 },
-  roomCardLive: { backgroundColor: colors.ink },
-  roomCardIdle: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline },
-  roomStatusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  section: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 16, color: colors.ink },
+  roomsList: { gap: 8 },
+  roomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+  },
+  roomTitle: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
+  roomStatusRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   dot: { width: 6, height: 6, borderRadius: 999 },
-  roomStatusLabel: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 1 },
-  roomTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, marginTop: 24 },
-  roomCount: { fontFamily: fonts.body, fontSize: 11, marginTop: 8 },
-  chipsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
-  chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 10 },
-  chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
-  chipText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
-  chipTextActive: { color: colors.surfaceRaised, fontFamily: fonts.bodyBold },
-  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 9 },
-  gridTile: { width: "47.7%", height: 112, borderRadius: 22 },
-  gridTileTall: { height: 233 },
-  gridBadge: { position: "absolute", left: 12, bottom: 12, backgroundColor: "rgba(23,20,18,0.5)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
-  gridBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#fff" },
-  resultsCard: { marginHorizontal: 16, marginBottom: 18, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, overflow: "hidden" },
+  roomCount: { fontFamily: fonts.body, fontSize: 12, color: colors.inkMuted },
+  joinButton: { backgroundColor: colors.accent, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  joinButtonText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff" },
+  notifyButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.hairline, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  notifyButtonText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
+  chipsRow: { flexDirection: "row", gap: 8 },
+  chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipText: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.ink },
+  chipTextActive: { color: "#fff" },
+  featuredTile: { height: 160, borderRadius: 12, padding: 12, justifyContent: "space-between", overflow: "hidden" },
+  durationBadge: { alignSelf: "flex-start", backgroundColor: "rgba(23,20,18,0.67)", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  durationBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#fff" },
+  featuredCaption: { fontFamily: fonts.display, fontSize: 16, color: "#fff" },
+  resultsCard: { marginHorizontal: 16, marginBottom: 18, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 16, overflow: "hidden" },
   resultRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
   resultDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
   resultName: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
   resultHandle: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint, marginTop: 2 },
-  error: { color: colors.cheer, textAlign: "center", marginVertical: 20 },
-  empty: { color: colors.inkMuted, paddingHorizontal: 20, marginTop: 20 },
+  error: { fontFamily: fonts.body, color: colors.cheer, textAlign: "center", marginVertical: 20 },
+  empty: { fontFamily: fonts.body, color: colors.inkMuted, marginTop: 4 },
 });

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { Avatar } from "@/components/Avatar";
 import { DropCard } from "@/components/DropCard";
 import { SearchIcon, MessageIcon, PlusIcon } from "@/assets/icons";
@@ -44,21 +44,20 @@ export function StreamScreen() {
   const activeAuthorIds = useMemo(() => new Set(drops.map((d) => d.author.id)), [drops]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.date}>{dayjs().format("dddd, D MMM").toUpperCase()}</Text>
-          <Text style={styles.title}>Stream</Text>
-        </View>
+    <ScreenGradient style={styles.container}>
+      <View style={styles.info}>
+        <Text style={styles.wordmark}>ReBanter.</Text>
         <View style={styles.headerIcons}>
           <SearchIcon size={22} color={colors.ink} />
-          <Pressable onPress={() => navigation.navigate("Banters")} style={{ position: "relative" }}>
-            <MessageIcon size={22} color={colors.ink} />
+          <Pressable onPress={() => navigation.navigate("Banters")}>
             {unreadCount > 0 ? (
               <View style={styles.badge}>
+                <MessageIcon size={14} color="#fff" />
                 <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
               </View>
-            ) : null}
+            ) : (
+              <MessageIcon size={22} color={colors.ink} />
+            )}
           </Pressable>
         </View>
       </View>
@@ -80,10 +79,12 @@ export function StreamScreen() {
               contentContainerStyle={styles.stories}
               ListHeaderComponent={
                 <Pressable style={styles.storyItem} onPress={() => navigation.navigate("NewDrop")}>
-                  <View style={styles.addTile}>
-                    <PlusIcon size={18} color={colors.accent} strokeWidth={2.4} />
+                  <View style={styles.addRing}>
+                    <View style={styles.addTile}>
+                      <PlusIcon size={16} color={colors.ink} strokeWidth={2.4} />
+                    </View>
                   </View>
-                  <Text style={styles.storyLabelMuted}>Add</Text>
+                  <Text style={styles.storyLabel}>Add</Text>
                 </Pressable>
               }
               renderItem={({ item }) => {
@@ -91,9 +92,11 @@ export function StreamScreen() {
                 return (
                   <View style={styles.storyItem}>
                     <View style={[styles.storyRing, active ? styles.storyRingActive : styles.storyRingIdle]}>
-                      <Avatar handle={item.handle} displayName={item.displayName} avatarUrl={item.avatarUrl} size={55} radius={16} />
+                      <Avatar handle={item.handle} displayName={item.displayName} avatarUrl={item.avatarUrl} size={48} radius={24} />
                     </View>
-                    <Text style={active ? styles.storyLabelActive : styles.storyLabelMuted}>{item.handle}</Text>
+                    <Text style={styles.storyLabel} numberOfLines={1}>
+                      {item.handle}
+                    </Text>
                   </View>
                 );
               }}
@@ -106,49 +109,48 @@ export function StreamScreen() {
           refreshing={isLoading}
         />
       )}
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 },
-  date: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint },
-  title: { fontFamily: fonts.display, fontSize: 30, color: colors.ink, marginTop: 7 },
-  headerIcons: { flexDirection: "row", alignItems: "center", gap: 9, paddingBottom: 3 },
+  container: { flex: 1 },
+  info: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
+  wordmark: { fontFamily: fonts.display, fontSize: 28, color: colors.ink },
+  headerIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
   badge: {
-    position: "absolute",
-    top: -5,
-    right: -6,
-    minWidth: 17,
-    height: 17,
-    borderRadius: 999,
-    backgroundColor: colors.cheer,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
+    gap: 4,
+    backgroundColor: colors.messageBadge,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: { color: "#fff", fontFamily: fonts.bodyBold, fontSize: 12 },
+  stories: { paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
+  storyItem: { width: 64, alignItems: "center", gap: 6 },
+  addRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  badgeText: { color: "#fff", fontFamily: fonts.bodyBold, fontSize: 9 },
-  stories: { paddingHorizontal: 20, paddingBottom: 18, gap: 10 },
-  storyItem: { width: 58, alignItems: "center", marginRight: 10 },
-  addTile: {
-    width: 58,
-    height: 74,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderColor: colors.dashedBorder,
+    borderColor: colors.hairline,
     alignItems: "center",
     justifyContent: "center",
   },
-  storyRing: { width: 58, height: 74, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  storyRingActive: { borderWidth: 2.5, borderColor: colors.accent },
-  storyRingIdle: { borderWidth: 2, borderColor: colors.hairlineStrong },
-  storyLabelActive: { fontFamily: fonts.bodySemibold, fontSize: 10, color: colors.ink, textAlign: "center", marginTop: 7 },
-  storyLabelMuted: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.inkMuted, textAlign: "center", marginTop: 7 },
+  addTile: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storyRing: { width: 56, height: 56, borderRadius: 28, padding: 3, alignItems: "center", justifyContent: "center" },
+  storyRingActive: { borderWidth: 2, borderColor: colors.accent },
+  storyRingIdle: { borderWidth: 2, borderColor: colors.hairline },
+  storyLabel: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.ink, textAlign: "center" },
   error: { color: colors.cheer, textAlign: "center", marginTop: 40 },
   empty: { color: colors.inkMuted, textAlign: "center", marginTop: 40, paddingHorizontal: 32 },
 });

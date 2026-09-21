@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts } from "@/theme/colors";
 import { PinIcon, UsersIcon, VideoIcon, ClockIcon } from "@/assets/icons";
 import { Toggle } from "@/components/Toggle";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { PeoplePickerModal } from "@/components/PeoplePickerModal";
 import { uploadLocalAsset } from "@/api/media";
 import { apiFetch } from "@/api/client";
@@ -77,14 +78,14 @@ export function NewDropScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenGradient style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
           <Text style={styles.cancel}>Cancel</Text>
         </Pressable>
         <Text style={styles.headerTitle}>New drop</Text>
         <Pressable style={styles.publishButton} onPress={onPublish} disabled={isPublishing}>
-          {isPublishing ? <ActivityIndicator color={colors.surfaceRaised} size="small" /> : <Text style={styles.publishText}>Publish</Text>}
+          {isPublishing ? <ActivityIndicator color={colors.ink} size="small" /> : <Text style={styles.publishText}>Publish</Text>}
         </Pressable>
       </View>
 
@@ -159,17 +160,17 @@ export function NewDropScreen({ navigation }: Props) {
         onSelect={toggleCrewTag}
         selectedIds={taggedCrew.map((p) => p.id)}
       />
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface, paddingTop: 56, paddingHorizontal: 18 },
+  container: { flex: 1, paddingTop: 56, paddingHorizontal: 18 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
-  cancel: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.inkSubtle },
-  headerTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.ink },
+  cancel: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.onDarkMuted },
+  headerTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.onDark },
   publishButton: { backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 11, minWidth: 76, alignItems: "center" },
-  publishText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.surfaceRaised },
+  publishText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.ink },
   mediaPicker: {
     height: 254,
     marginBottom: 14,
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   captionCard: { marginBottom: 14, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, padding: 16 },
   captionInput: { fontFamily: fonts.body, fontSize: 15, color: colors.ink, minHeight: 44 },
   captionFooter: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.divider },
-  hashtag: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.accent, backgroundColor: colors.accentTint, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  hashtag: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink, backgroundColor: colors.accentTint, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   hashtagHint: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint },
   charCount: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
   optionsCard: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, overflow: "hidden" },

@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { ChevronLeftIcon, CameraIcon } from "@/assets/icons";
 import { useSession } from "@/session/SessionContext";
 import { updateMe } from "@/api/users";
@@ -71,10 +72,10 @@ export function EditProfileScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenGradient style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <ChevronLeftIcon size={22} color={colors.ink} />
+          <ChevronLeftIcon size={22} color={colors.onDark} />
         </Pressable>
         <Text style={styles.title}>Edit profile</Text>
         <Pressable onPress={onSave} disabled={isSaving || !displayName.trim()}>
@@ -85,7 +86,7 @@ export function EditProfileScreen({ navigation }: Props) {
       <Pressable style={styles.avatarWrap} onPress={onChangeAvatar} disabled={isUploadingAvatar}>
         <Avatar handle={user.handle} displayName={displayName || user.displayName} avatarUrl={avatarUrl} size={92} radius={30} />
         <View style={styles.avatarBadge}>
-          {isUploadingAvatar ? <ActivityIndicator size="small" color={colors.surfaceRaised} /> : <CameraIcon size={16} color={colors.surfaceRaised} strokeWidth={2} />}
+          {isUploadingAvatar ? <ActivityIndicator size="small" color={colors.ink} /> : <CameraIcon size={16} color={colors.ink} strokeWidth={2} />}
         </View>
       </Pressable>
       <Text style={styles.avatarHint}>Tap to change photo</Text>
@@ -108,14 +109,14 @@ export function EditProfileScreen({ navigation }: Props) {
       <TextInput style={styles.input} value={link} onChangeText={setLink} placeholder="rebanter.app/you" placeholderTextColor={colors.inkFaint} autoCapitalize="none" />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface, paddingTop: 56, paddingHorizontal: 20 },
+  container: { flex: 1, paddingTop: 56, paddingHorizontal: 20 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 },
-  title: { fontFamily: fonts.displaySemibold, fontSize: 17, color: colors.ink },
+  title: { fontFamily: fonts.displaySemibold, fontSize: 17, color: colors.onDark },
   save: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.accent },
   avatarWrap: { alignSelf: "center", position: "relative" },
   avatarBadge: {
@@ -125,14 +126,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 999,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.accent,
     borderWidth: 3,
     borderColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarHint: { textAlign: "center", fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accent, marginTop: 10, marginBottom: 26 },
-  label: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.inkMuted, marginBottom: 8 },
+  label: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.onDarkMuted, marginBottom: 8 },
   input: {
     height: 48,
     borderRadius: 14,

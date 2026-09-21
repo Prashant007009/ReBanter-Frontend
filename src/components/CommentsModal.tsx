@@ -216,7 +216,7 @@ export function CommentsModal({
         </View>
 
         {isLoading ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={colors.accent} />
+          <ActivityIndicator style={{ marginTop: 30 }} color={colors.ink} />
         ) : (
           <FlatList
             ref={listRef}
@@ -274,7 +274,7 @@ export function CommentsModal({
             multiline
           />
           <Pressable style={styles.sendButton} onPress={onSend} disabled={!draft.trim() || isSending}>
-            {isSending ? <ActivityIndicator size="small" color={colors.surfaceRaised} /> : <ArrowRightIcon size={17} color={colors.surfaceRaised} strokeWidth={2.2} />}
+            {isSending ? <ActivityIndicator size="small" color={colors.ink} /> : <ArrowRightIcon size={17} color={colors.ink} strokeWidth={2.2} />}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -283,8 +283,8 @@ export function CommentsModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(23,20,18,0.4)" },
-  sheet: { height: "82%", backgroundColor: colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, overflow: "hidden" },
+  backdrop: { flex: 1, backgroundColor: "rgba(15,14,71,0.5)" },
+  sheet: { height: "82%", backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 26, borderTopRightRadius: 26, overflow: "hidden" },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.hairlineStrong, alignSelf: "center", marginTop: 10 },
   header: {
     flexDirection: "row",
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.hairlineSoft,
   },
   title: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.ink },
-  close: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.accent },
+  close: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.ink },
   list: { paddingHorizontal: 20, paddingVertical: 16, flexGrow: 1 },
   separator: { height: 18 },
   row: { flexDirection: "row", gap: 12 },
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   rowHandle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.ink },
   rowTime: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
   rowBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.ink, marginTop: 4 },
-  mention: { fontFamily: fonts.bodySemibold, fontSize: 14, lineHeight: 20, color: colors.accent },
+  mention: { fontFamily: fonts.bodySemibold, fontSize: 14, lineHeight: 20, color: colors.cheer },
   rowActions: { flexDirection: "row", alignItems: "center", gap: 18, marginTop: 8 },
   rowAction: { flexDirection: "row", alignItems: "center", gap: 5 },
   rowActionText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.inkFaint },
@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  replyingChipText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accent },
-  replyingChipCancel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.accent },
+  replyingChipText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink },
+  replyingChipCancel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
   composerRow: {
     flexDirection: "row",
     alignItems: "flex-end",

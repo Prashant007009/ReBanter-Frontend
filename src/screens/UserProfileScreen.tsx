@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Image, Linking, Pressable, StyleSheet, Tex
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { ChevronLeftIcon, ZapIcon, ArrowRightIcon, MusicNoteIcon, PinIcon, VideoIcon, LockIcon } from "@/assets/icons";
 import type { IconProps } from "@/assets/icons";
 import { getUserProfile, getUserDrops } from "@/api/users";
@@ -130,10 +131,10 @@ export function UserProfileScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenGradient style={styles.container}>
       <View style={styles.topBar}>
         <Pressable hitSlop={10} onPress={() => navigation.goBack()}>
-          <ChevronLeftIcon size={22} color={colors.ink} />
+          <ChevronLeftIcon size={22} color={colors.onDark} />
         </Pressable>
         <Text style={styles.topBarHandle} numberOfLines={1}>
           @{handle}
@@ -214,7 +215,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
                   const active = tab === key;
                   return (
                     <Pressable key={key} onPress={() => setTab(key)} style={styles.tab} accessibilityLabel={key}>
-                      <Icon size={22} color={active ? colors.ink : colors.inkFaint} strokeWidth={1.7} />
+                      <Icon size={22} color={active ? colors.onDark : colors.onDarkFaint} strokeWidth={1.7} />
                       <View style={[styles.tabIndicator, active && styles.tabIndicatorActive]} />
                     </Pressable>
                   );
@@ -224,7 +225,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
               {locked ? (
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconTile}>
-                    <LockIcon size={20} color={colors.inkFaint} strokeWidth={1.8} />
+                    <LockIcon size={20} color={colors.onDarkFaint} strokeWidth={1.8} />
                   </View>
                   <Text style={styles.emptyTitle}>This account is private</Text>
                   <Text style={styles.emptySubtitle}>Send a crew request to see @{profile.handle}'s drops.</Text>
@@ -232,7 +233,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
               ) : tab === "Drops" && drops.length === 0 ? (
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconTile}>
-                    <GridDotsIcon size={20} color={colors.inkFaint} />
+                    <GridDotsIcon size={20} color={colors.onDarkFaint} />
                   </View>
                   <Text style={styles.emptyTitle}>No drops yet</Text>
                 </View>
@@ -240,11 +241,11 @@ export function UserProfileScreen({ route, navigation }: Props) {
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconTile}>
                     {tab === "Loops" ? (
-                      <MusicNoteIcon size={20} color={colors.inkFaint} strokeWidth={1.8} />
+                      <MusicNoteIcon size={20} color={colors.onDarkFaint} strokeWidth={1.8} />
                     ) : tab === "Pinned" ? (
-                      <PinIcon size={20} color={colors.inkFaint} strokeWidth={1.8} />
+                      <PinIcon size={20} color={colors.onDarkFaint} strokeWidth={1.8} />
                     ) : (
-                      <VideoIcon size={20} color={colors.inkFaint} strokeWidth={1.8} />
+                      <VideoIcon size={20} color={colors.onDarkFaint} strokeWidth={1.8} />
                     )}
                   </View>
                   <Text style={styles.emptyTitle}>Nothing here yet</Text>
@@ -256,12 +257,12 @@ export function UserProfileScreen({ route, navigation }: Props) {
           contentContainerStyle={{ paddingBottom: 24 }}
         />
       )}
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -270,27 +271,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
-  topBarHandle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.ink, flexShrink: 1 },
+  topBarHandle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.onDark, flexShrink: 1 },
   profileRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, gap: 20 },
   statsRow: { flex: 1, flexDirection: "row", justifyContent: "space-around" },
   stat: { alignItems: "center" },
-  statValue: { fontFamily: fonts.display, fontSize: 19, color: colors.ink },
-  statLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.inkSubtle, marginTop: 5 },
+  statValue: { fontFamily: fonts.display, fontSize: 19, color: colors.onDark },
+  statLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.onDarkMuted, marginTop: 5 },
   infoBlock: { paddingHorizontal: 20, marginTop: 14 },
-  name: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
-  bio: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: "#3C362F", marginTop: 4 },
+  name: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.onDark },
+  bio: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.onDarkMuted, marginTop: 4 },
   linkRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
   link: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.accent },
   buttonsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginTop: 16 },
-  primaryButton: { flex: 1, alignItems: "center", backgroundColor: colors.ink, borderRadius: 10, paddingVertical: 11 },
-  primaryButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.surfaceRaised },
-  secondaryButton: { flex: 1, alignItems: "center", backgroundColor: colors.chipMuted, borderWidth: 1, borderColor: colors.hairline, borderRadius: 10, paddingVertical: 11 },
-  secondaryButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.inkMuted },
-  tabs: { flexDirection: "row", marginTop: 20, borderTopWidth: 1, borderTopColor: colors.hairlineSoft },
+  primaryButton: { flex: 1, alignItems: "center", backgroundColor: colors.accent, borderRadius: 10, paddingVertical: 11 },
+  primaryButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.ink },
+  secondaryButton: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: colors.onDarkHairline,
+    borderRadius: 10,
+    paddingVertical: 11,
+  },
+  secondaryButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.onDarkMuted },
+  tabs: { flexDirection: "row", marginTop: 20, borderTopWidth: 1, borderTopColor: colors.onDarkHairline },
   tab: { flex: 1, alignItems: "center", paddingTop: 13, paddingBottom: 11 },
   tabIndicator: { marginTop: 11, height: 2, width: 26, borderRadius: 1, backgroundColor: "transparent" },
-  tabIndicatorActive: { backgroundColor: colors.ink },
-  gridTile: { width: "33.33%", aspectRatio: 1, backgroundColor: colors.hairline, margin: 1, borderRadius: 2, overflow: "hidden" },
+  tabIndicatorActive: { backgroundColor: colors.accent },
+  gridTile: { width: "33.33%", aspectRatio: 1, backgroundColor: "rgba(255,255,255,0.08)", margin: 1, borderRadius: 2, overflow: "hidden" },
   gridTileFallback: { alignItems: "center", justifyContent: "center" },
   gridBadge: {
     position: "absolute",
@@ -310,15 +319,15 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 18,
-    backgroundColor: colors.chipMuted,
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: colors.dashedBorder,
+    borderColor: colors.onDarkHairline,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
   },
-  emptyTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.ink },
-  emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 6, lineHeight: 19 },
+  emptyTitle: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.onDark },
+  emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.onDarkMuted, textAlign: "center", marginTop: 6, lineHeight: 19 },
   error: { color: colors.cheer, textAlign: "center", marginTop: 40, paddingHorizontal: 32 },
 });

@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { Toggle } from "@/components/Toggle";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/assets/icons";
 import { useSession } from "@/session/SessionContext";
 import { updateMe } from "@/api/users";
@@ -61,10 +62,10 @@ export function SettingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenGradient style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <ChevronLeftIcon size={22} color={colors.ink} />
+          <ChevronLeftIcon size={22} color={colors.onDark} />
         </Pressable>
         <Text style={styles.title}>Settings</Text>
       </View>
@@ -130,20 +131,20 @@ export function SettingsScreen() {
           <Text style={styles.logOutText}>Log out</Text>
         </Pressable>
       </View>
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface, paddingTop: 56, paddingHorizontal: 20 },
+  container: { flex: 1, paddingTop: 56, paddingHorizontal: 20 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-  title: { fontFamily: fonts.display, fontSize: 30, color: colors.ink },
-  accountRow: { flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: colors.ink, borderRadius: 22, padding: 14, marginBottom: 18, marginHorizontal: -4 },
-  accountName: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.surfaceRaised },
-  accountHandle: { fontFamily: fonts.body, fontSize: 12, color: "#9A938A", marginTop: 2 },
+  title: { fontFamily: fonts.display, fontSize: 30, color: colors.onDark },
+  accountRow: { flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: colors.accent, borderRadius: 22, padding: 14, marginBottom: 18, marginHorizontal: -4 },
+  accountName: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
+  accountHandle: { fontFamily: fonts.body, fontSize: 12, color: colors.inkMuted, marginTop: 2 },
   switchPill: { backgroundColor: "#D9FF7A", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9 },
   switchText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.ink },
-  sectionLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, marginBottom: 8 },
+  sectionLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.onDarkFaint, marginBottom: 8 },
   section: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, marginBottom: 22, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 16, paddingVertical: 14 },
   rowLabel: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.ink },

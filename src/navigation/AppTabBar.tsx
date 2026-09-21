@@ -57,9 +57,8 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
 
       <View style={styles.slot}>
         <Pressable style={styles.dropButton} onPress={() => navigation.navigate("NewDrop" as never)}>
-          <PlusIcon size={19} color={colors.surfaceRaised} strokeWidth={2.4} />
+          <PlusIcon size={20} color={colors.surfaceRaised} strokeWidth={2.4} />
         </Pressable>
-        <Text style={styles.dropLabel}>Drop</Text>
       </View>
 
       {state.routes.slice(2).map((route) => {
@@ -69,7 +68,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
           return (
             <View key={route.key} style={styles.slot}>
               <Pressable onPress={() => navigation.navigate(route.name)} style={[styles.pill, isFocused && styles.pillActive]}>
-                <View style={[styles.meAvatarRing, { borderColor: isFocused ? colors.accent : colors.inkSubtle }]}>
+                <View style={[styles.meAvatarRing, { borderColor: isFocused ? colors.accent : colors.inkMuted }]}>
                   {user ? (
                     <Avatar handle={user.handle} displayName={user.displayName} avatarUrl={user.avatarUrl} size={19} radius={6} />
                   ) : null}
@@ -110,7 +109,7 @@ function TabSlot({
   icon: (color: string, strokeWidth: number) => React.ReactNode;
   badge?: boolean;
 }) {
-  const color = active ? colors.accent : colors.inkSubtle;
+  const color = active ? colors.accent : colors.inkMuted;
   return (
     <View style={styles.slot}>
       <Pressable onPress={onPress} style={[styles.pill, active && styles.pillActive]}>
@@ -135,7 +134,7 @@ const styles = StyleSheet.create({
   },
   slot: { flex: 1, alignItems: "center", gap: 6 },
   pill: { width: 50, height: 28, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  pillActive: { backgroundColor: colors.accentTint },
+  pillActive: {},
   tabDot: {
     position: "absolute",
     top: 3,
@@ -147,9 +146,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.surfaceRaised,
   },
-  label: { fontSize: 10, fontFamily: fonts.bodyMedium, color: colors.inkSubtle },
+  label: { fontSize: 10, fontFamily: fonts.bodyMedium, color: colors.inkMuted },
   labelActive: { fontFamily: fonts.bodyBold, color: colors.accent },
   meAvatarRing: { width: 23, height: 23, borderRadius: 8, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  dropButton: { width: 52, height: 34, borderRadius: 13, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", marginTop: -3 },
-  dropLabel: { fontSize: 10, fontFamily: fonts.bodySemibold, color: colors.ink },
+  dropButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.cheer, alignItems: "center", justifyContent: "center", marginTop: -7 },
 });

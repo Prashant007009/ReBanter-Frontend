@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
-import { Avatar } from "@/components/Avatar";
-import { ZapIcon, UserPlusIcon, ReplyIcon, MentionIcon, UserIcon } from "@/assets/icons";
+import { ScreenGradient } from "@/components/ScreenGradient";
+import { StarOffIcon, ArrowUpLeftIcon, AtSignIcon, PlusCircleIcon, UserIcon } from "@/assets/icons";
 import { getPulse, markAllRead } from "@/api/pulse";
 import { acceptCrewRequest, skipCrewRequest } from "@/api/crew";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Notification } from "@/api/types";
-import type { RootStackParamList } from "@/navigation/types";
 
 const FILTERS = ["All", "Cheers", "Crew", "Mentions"] as const;
 type Filter = (typeof FILTERS)[number];
+
+// Icon-tile tints — 13% washes of the same brand colors used everywhere
+// else (cheer orange, accent violet, ink), one per notification type.
+const CHEER_TINT = "rgba(226,84,47,0.13)";
+const ACCENT_TINT_13 = "rgba(91,60,255,0.13)";
+const INK_TINT = "rgba(23,20,18,0.13)";
 
 function matchesFilter(n: Notification, filter: Filter): boolean {
   if (filter === "All") return true;
@@ -26,15 +29,15 @@ function describe(n: Notification): string {
   const who = n.actor?.displayName ?? "Someone";
   switch (n.type) {
     case "CHEER":
-      return `${who} cheered your drop.`;
+      return `${who} cheered your drop`;
     case "REPLY":
-      return `${who} replied to your drop.`;
+      return `${who} replied`;
     case "CREW_JOINED":
-      return `${who} joined your crew.`;
+      return `${who} joined your crew`;
     case "CREW_REQUEST":
-      return `${who} wants to join your crew.`;
+      return `${who} wants to join your crew`;
     case "MENTION":
-      return `${who} mentioned you.`;
+      return `${who} mentioned you`;
   }
 }
 
@@ -42,39 +45,38 @@ function NotificationIcon({ type }: { type: Notification["type"] }) {
   switch (type) {
     case "CHEER":
       return (
-        <View style={[styles.iconTile, { backgroundColor: colors.cheerTint }]}>
-          <ZapIcon size={18} color={colors.cheer} />
+        <View style={[styles.iconTile, { backgroundColor: CHEER_TINT }]}>
+          <StarOffIcon size={16} color={colors.cheer} />
         </View>
       );
     case "CREW_JOINED":
       return (
-        <View style={[styles.iconTile, { backgroundColor: colors.accentTint }]}>
-          <UserPlusIcon size={18} color={colors.accent} />
+        <View style={[styles.iconTile, { backgroundColor: ACCENT_TINT_13 }]}>
+          <UserIcon size={16} color={colors.accent} />
         </View>
       );
     case "REPLY":
       return (
-        <View style={[styles.iconTile, { backgroundColor: "#E7F2EA" }]}>
-          <ReplyIcon size={18} color="#2F6A50" strokeWidth={2} />
+        <View style={[styles.iconTile, { backgroundColor: ACCENT_TINT_13 }]}>
+          <ArrowUpLeftIcon size={16} color={colors.accent} />
         </View>
       );
     case "MENTION":
       return (
-        <View style={[styles.iconTile, { backgroundColor: "#FBF1DC" }]}>
-          <MentionIcon size={18} color="#A97F21" />
+        <View style={[styles.iconTile, { backgroundColor: INK_TINT }]}>
+          <AtSignIcon size={16} color={colors.ink} />
         </View>
       );
     case "CREW_REQUEST":
       return (
-        <View style={[styles.iconTile, { backgroundColor: colors.accentTint }]}>
-          <UserIcon size={18} color={colors.accent} />
+        <View style={[styles.iconTile, { backgroundColor: CHEER_TINT }]}>
+          <PlusCircleIcon size={16} color={colors.cheer} />
         </View>
       );
   }
 }
 
 export function PulseScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [items, setItems] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
   const [isLoading, setIsLoading] = useState(true);
@@ -133,34 +135,30 @@ export function PulseScreen() {
   function renderGroup(label: string, group: Notification[]) {
     if (group.length === 0) return null;
     return (
-      <View key={label}>
+      <View key={label} style={styles.section}>
         <Text style={styles.sectionLabel}>{label}</Text>
-        <View style={styles.card}>
-          {group.map((item, index) => {
+        <View style={styles.cardList}>
+          {group.map((item) => {
             const resolved = resolvedIds.has(item.id);
             return (
-              <View key={item.id} style={[styles.row, index > 0 && styles.rowDivider]}>
+              <View key={item.id} style={styles.card}>
                 <NotificationIcon type={item.type} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.rowText}>{describe(item)}</Text>
-                  <Text style={styles.rowTime}>{dayjs(item.createdAt).fromNow()}</Text>
-                </View>
-                {item.type === "CREW_REQUEST" && !resolved ? (
-                  <View style={styles.actions}>
-                    <Pressable style={styles.letIn} onPress={() => onLetIn(item)}>
-                      <Text style={styles.letInText}>Let in</Text>
-                    </Pressable>
-                    <Pressable style={styles.skip} onPress={() => onSkip(item)}>
-                      <Text style={styles.skipText}>Skip</Text>
-                    </Pressable>
+                <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
+                  <View style={{ gap: 2 }}>
+                    <Text style={styles.rowText}>{describe(item)}</Text>
+                    <Text style={styles.rowTime}>{dayjs(item.createdAt).fromNow()}</Text>
                   </View>
-                ) : item.actor && (item.type === "CHEER" || item.type === "REPLY") ? (
-                  <Avatar handle={item.actor.handle} displayName={item.actor.displayName} avatarUrl={item.actor.avatarUrl} size={44} radius={13} />
-                ) : item.type === "CREW_JOINED" && item.actor ? (
-                  <Pressable style={styles.tuneIn} onPress={() => navigation.navigate("UserProfile", { handle: item.actor!.handle })}>
-                    <Text style={styles.tuneInText}>Tune in</Text>
-                  </Pressable>
-                ) : null}
+                  {item.type === "CREW_REQUEST" && !resolved ? (
+                    <View style={styles.actions}>
+                      <Pressable style={styles.letIn} onPress={() => onLetIn(item)}>
+                        <Text style={styles.letInText}>Let in</Text>
+                      </Pressable>
+                      <Pressable style={styles.skip} onPress={() => onSkip(item)}>
+                        <Text style={styles.skipText}>Skip</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
               </View>
             );
           })}
@@ -170,7 +168,7 @@ export function PulseScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenGradient style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Pulse</Text>
         <Pressable
@@ -221,35 +219,42 @@ export function PulseScreen() {
           )}
         />
       )}
-    </View>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface, paddingTop: 20 },
-  header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 14 },
-  title: { fontFamily: fonts.display, fontSize: 30, color: colors.ink },
-  markAllRead: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.accent, paddingBottom: 4 },
-  filtersList: { flexGrow: 0, flexShrink: 0, marginBottom: 18 },
-  filters: { paddingHorizontal: 16, gap: 8 },
-  chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 10 },
-  chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  container: { flex: 1 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 },
+  title: { fontFamily: fonts.display, fontSize: 28, color: colors.ink },
+  markAllRead: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.accent },
+  filtersList: { flexGrow: 0, flexShrink: 0 },
+  filters: { paddingHorizontal: 16, paddingBottom: 16, gap: 6 },
+  chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  chipActive: { backgroundColor: colors.ink },
   chipText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
-  chipTextActive: { color: colors.surfaceRaised, fontFamily: fonts.bodyBold },
-  sectionLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint, paddingHorizontal: 20, marginBottom: 10 },
-  card: { marginHorizontal: 16, marginBottom: 18, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 22, overflow: "hidden" },
-  row: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 15, paddingVertical: 14 },
-  rowDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
-  iconTile: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  rowText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.ink },
-  rowTime: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint, marginTop: 3 },
-  actions: { flexDirection: "row", gap: 7 },
-  letIn: { backgroundColor: colors.ink, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 11 },
-  letInText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.surfaceRaised },
-  skip: { backgroundColor: colors.chipMuted, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 11 },
-  skipText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.inkMuted },
-  tuneIn: { backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 11 },
-  tuneInText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.surfaceRaised },
-  error: { color: colors.cheer, textAlign: "center", marginTop: 30 },
-  empty: { color: colors.inkMuted, textAlign: "center", marginTop: 30 },
+  chipTextActive: { color: "#fff" },
+  section: { paddingHorizontal: 16, gap: 8 },
+  sectionLabel: { fontFamily: fonts.display, fontSize: 14, color: colors.inkMuted, textTransform: "uppercase" },
+  cardList: { gap: 8 },
+  card: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 12,
+    padding: 12,
+  },
+  iconTile: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  rowText: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.ink },
+  rowTime: { fontFamily: fonts.body, fontSize: 11, color: colors.inkMuted },
+  actions: { flexDirection: "row", gap: 8 },
+  letIn: { backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
+  letInText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff" },
+  skip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.hairline, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
+  skipText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
+  error: { fontFamily: fonts.body, color: colors.cheer, textAlign: "center", marginTop: 30 },
+  empty: { fontFamily: fonts.body, color: colors.inkMuted, textAlign: "center", marginTop: 30 },
 });
