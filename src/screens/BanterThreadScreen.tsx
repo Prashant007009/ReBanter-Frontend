@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -17,13 +18,21 @@ import dayjs from "@/lib/dayjs";
 import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { ScreenGradient } from "@/components/ScreenGradient";
+import { MessageBubble } from "@/components/chat/MessageBubble";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { DateSeparator } from "@/components/chat/DateSeparator";
+import { ImageViewerModal } from "@/components/chat/ImageViewerModal";
 import { ChevronLeftIcon, VideoIcon, MoreHorizontalIcon, CameraIcon, SmileIcon, ArrowRightIcon } from "@/assets/icons";
-import { getMessages, sendMessage, sendTyping } from "@/api/banters";
+import { getMessages, sendMessage, sendTyping, reactToMessage, unreactToMessage } from "@/api/banters";
 import { uploadLocalAsset } from "@/api/media";
 import { useSession } from "@/session/SessionContext";
 import { realtimeSocket } from "@/realtime/socket";
 import type { Message } from "@/api/types";
 import type { RootStackParamList } from "@/navigation/types";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const QUICK_REPLIES = ["on my way", "send the raw", "ha, fair"];
 const STICKERS = ["😂", "❤️", "😍", "🔥", "👏", "😢", "😮", "🎉", "🙌", "😎", "🤔", "👍", "💯", "😭", "🥳", "🙏"];
@@ -31,11 +40,7 @@ const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB
 const TYPING_SEND_INTERVAL_MS = 2000;
 const TYPING_EXPIRE_MS = 3000;
 
-interface GroupedMessage {
-  item: Message;
-  isFirstInGroup: boolean;
-  isLastInGroup: boolean;
-}
+type Row = { kind: "date"; key: string; createdAt: string } | { kind: "message"; key: string; item: Message; isFirstInGroup: boolean; isLastInGroup: boolean };
 
 type Props = NativeStackScreenProps<RootStackParamList, "BanterThread">;
 
@@ -49,10 +54,15 @@ export function BanterThreadScreen({ route, navigation }: Props) {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [stickersOpen, setStickersOpen] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const listRef = useRef<FlatList<GroupedMessage>>(null);
+  const listRef = useRef<FlatList<Row>>(null);
   const lastTypingSentAt = useRef(0);
   const typingClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const animateNext = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -70,13 +80,14 @@ export function BanterThreadScreen({ route, navigation }: Props) {
     load();
   }, [load]);
 
-  // Live incoming messages + typing indicator for this thread.
+  // Live incoming messages, typing, read receipts, and reactions for this thread.
   useEffect(() => {
     realtimeSocket.connect();
     const offMessage = realtimeSocket.on("message.new", (payload) => {
       const message = payload as Message;
       if (message.banterId !== banterId) return;
       setOtherTyping(false);
+      animateNext();
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     });
@@ -87,13 +98,24 @@ export function BanterThreadScreen({ route, navigation }: Props) {
       if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
       typingClearTimer.current = setTimeout(() => setOtherTyping(false), TYPING_EXPIRE_MS);
     });
+    const offSeen = realtimeSocket.on("message.seen", (payload) => {
+      const { banterId: eventBanterId, seenAt } = payload as { banterId: string; seenAt: string };
+      if (eventBanterId !== banterId) return;
+      setMessages((prev) => prev.map((m) => (m.senderId === user?.id && !m.seenAt ? { ...m, seenAt } : m)));
+    });
+    const offReaction = realtimeSocket.on("message.reaction", (payload) => {
+      const { messageId, reactions } = payload as { messageId: string; reactions: Message["reactions"] };
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions } : m)));
+    });
     return () => {
       offMessage();
       offTyping();
+      offSeen();
+      offReaction();
       if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
       realtimeSocket.disconnect();
     };
-  }, [banterId]);
+  }, [banterId, user?.id, animateNext]);
 
   function onDraftChange(text: string) {
     setDraft(text);
@@ -110,6 +132,7 @@ export function BanterThreadScreen({ route, navigation }: Props) {
     setStickersOpen(false);
     try {
       const message = await sendMessage(banterId, input);
+      animateNext();
       setMessages((prev) => [...prev, message]);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (err) {
@@ -160,14 +183,42 @@ export function BanterThreadScreen({ route, navigation }: Props) {
     }
   }
 
-  const groups = useMemo(() => {
-    return messages.map((item, i) => {
+  function onReact(messageId: string, emoji: string) {
+    animateNext();
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, reactions: [...m.reactions.filter((r) => r.userId !== user?.id), { id: `local-${messageId}`, userId: user!.id, emoji }] }
+          : m
+      )
+    );
+    reactToMessage(messageId, emoji).catch(() => load());
+  }
+
+  function onUnreact(messageId: string) {
+    animateNext();
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions: m.reactions.filter((r) => r.userId !== user?.id) } : m)));
+    unreactToMessage(messageId).catch(() => load());
+  }
+
+  const lastMineSeenId = useMemo(() => {
+    const last = messages[messages.length - 1];
+    return last && last.senderId === user?.id && last.seenAt ? last.id : null;
+  }, [messages, user?.id]);
+
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    messages.forEach((item, i) => {
       const prev = messages[i - 1];
+      if (!prev || !dayjs(prev.createdAt).isSame(dayjs(item.createdAt), "day")) {
+        out.push({ kind: "date", key: `date-${item.id}`, createdAt: item.createdAt });
+      }
       const next = messages[i + 1];
-      const isFirstInGroup = !prev || prev.senderId !== item.senderId;
-      const isLastInGroup = !next || next.senderId !== item.senderId;
-      return { item, isFirstInGroup, isLastInGroup };
+      const isFirstInGroup = !prev || prev.senderId !== item.senderId || out[out.length - 1]?.kind === "date";
+      const isLastInGroup = !next || next.senderId !== item.senderId || !dayjs(next.createdAt).isSame(dayjs(item.createdAt), "day");
+      out.push({ kind: "message", key: item.id, item, isFirstInGroup, isLastInGroup });
     });
+    return out;
   }, [messages]);
 
   return (
@@ -194,48 +245,49 @@ export function BanterThreadScreen({ route, navigation }: Props) {
           </Pressable>
         </View>
 
-        {isLoading ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={colors.accent} />
-        ) : (
-          <FlatList
-            ref={listRef}
-            data={groups}
-            keyExtractor={({ item }) => item.id}
-            contentContainerStyle={styles.messageList}
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-            ListFooterComponent={
-              otherTyping ? (
-                <View style={{ alignItems: "flex-start" }}>
-                  <View style={[styles.bubble, styles.bubbleTheirs, styles.typingBubble]}>
-                    <Text style={styles.typingDots}>•••</Text>
+        <View style={styles.messageArea}>
+          {isLoading ? (
+            <ActivityIndicator style={{ marginTop: 30 }} color={colors.accent} />
+          ) : messages.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Avatar handle={handle} displayName={handle} size={72} radius={26} />
+              <Text style={styles.emptyTitle}>{handle}</Text>
+              <Text style={styles.emptySubtitle}>Say hi — this is the start of your banter.</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={listRef}
+              data={rows}
+              keyExtractor={(row) => row.key}
+              contentContainerStyle={styles.messageList}
+              onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+              ListFooterComponent={
+                otherTyping ? (
+                  <View style={{ marginTop: 8 }}>
+                    <TypingIndicator />
                   </View>
-                </View>
-              ) : null
-            }
-            renderItem={({ item: { item, isFirstInGroup, isLastInGroup } }) => {
-              const mine = item.senderId === user?.id;
-              const cornerStyle = mine
-                ? { borderBottomRightRadius: isLastInGroup ? 6 : 20 }
-                : { borderBottomLeftRadius: isLastInGroup ? 6 : 20 };
-              return (
-                <View style={{ alignItems: mine ? "flex-end" : "flex-start", marginTop: isFirstInGroup ? 12 : 2 }}>
-                  {item.kind === "sticker" ? (
-                    <Text style={styles.stickerText}>{item.body}</Text>
-                  ) : item.kind === "image" && item.imageUrl ? (
-                    <View style={[styles.imageBubble, cornerStyle]}>
-                      <Image source={{ uri: item.imageUrl }} style={styles.imageBubbleImage} resizeMode="cover" />
-                    </View>
-                  ) : (
-                    <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, cornerStyle]}>
-                      <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{item.body}</Text>
-                    </View>
-                  )}
-                  {isLastInGroup ? <Text style={styles.bubbleTime}>{dayjs(item.createdAt).format("H:mm")}</Text> : null}
-                </View>
-              );
-            }}
-          />
-        )}
+                ) : null
+              }
+              renderItem={({ item: row }) =>
+                row.kind === "date" ? (
+                  <DateSeparator createdAt={row.createdAt} />
+                ) : (
+                  <MessageBubble
+                    message={row.item}
+                    mine={row.item.senderId === user?.id}
+                    isFirstInGroup={row.isFirstInGroup}
+                    isLastInGroup={row.isLastInGroup}
+                    currentUserId={user?.id}
+                    seenLabel={row.item.id === lastMineSeenId ? `Seen ${dayjs(row.item.seenAt!).format("H:mm")}` : null}
+                    onReact={onReact}
+                    onUnreact={onUnreact}
+                    onImagePress={setViewerUri}
+                  />
+                )
+              }
+            />
+          )}
+        </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -291,6 +343,8 @@ export function BanterThreadScreen({ route, navigation }: Props) {
           ) : null}
         </View>
       </KeyboardAvoidingView>
+
+      <ImageViewerModal uri={viewerUri} onClose={() => setViewerUri(null)} />
     </ScreenGradient>
   );
 }
@@ -323,25 +377,18 @@ const styles = StyleSheet.create({
   headerName: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
   headerStatus: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.success, marginTop: 2 },
   headerStatusTyping: { color: colors.accent, fontFamily: fonts.bodyBold },
-  messageList: { padding: 18, paddingTop: 12, gap: 2 },
-  bubble: { maxWidth: "72%", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 22 },
-  bubbleTheirs: { alignSelf: "flex-start", backgroundColor: colors.surfaceRaised, ...shadowSm },
-  bubbleMine: { alignSelf: "flex-end", backgroundColor: colors.accent, ...shadowSm, shadowColor: colors.accent, shadowOpacity: 0.25 },
-  bubbleText: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.ink },
-  bubbleTextMine: { color: "#fff" },
-  bubbleTime: { fontFamily: fonts.body, fontSize: 10, color: colors.inkFaint, marginTop: 4, marginHorizontal: 4 },
-  stickerText: { fontSize: 48, lineHeight: 56, marginVertical: 2 },
-  imageBubble: { maxWidth: 220, borderRadius: 22, overflow: "hidden", ...shadowSm },
-  imageBubbleImage: { width: 220, height: 220, backgroundColor: colors.hairline },
-  typingBubble: { paddingVertical: 14, paddingHorizontal: 18 },
-  typingDots: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.inkMuted, letterSpacing: 2 },
-  error: { color: colors.cheer, textAlign: "center", paddingBottom: 6 },
-  quickReplies: { paddingHorizontal: 18, paddingBottom: 12, gap: 8 },
+  messageArea: { flex: 1, backgroundColor: colors.surface },
+  messageList: { padding: 18, paddingTop: 12, gap: 3 },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 40 },
+  emptyTitle: { fontFamily: fonts.displaySemibold, fontSize: 18, color: colors.ink, marginTop: 8 },
+  emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, textAlign: "center" },
+  error: { color: colors.cheer, textAlign: "center", paddingVertical: 6, backgroundColor: colors.surface },
+  quickReplies: { paddingHorizontal: 18, paddingVertical: 12, gap: 8, backgroundColor: colors.surface },
   quickReplyChip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
   quickReplyText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
   stickerChip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   stickerChipText: { fontSize: 22 },
-  composerRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, paddingHorizontal: 12, paddingBottom: 28, paddingTop: 6 },
+  composerRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, paddingHorizontal: 12, paddingBottom: 28, paddingTop: 8, backgroundColor: colors.canvas },
   composerSideButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   composerPill: {
     flex: 1,

@@ -78,6 +78,12 @@ export interface BanterListItem {
   lastMessage: Message | null;
 }
 
+export interface MessageReaction {
+  id: string;
+  userId: string;
+  emoji: string;
+}
+
 export interface Message {
   id: string;
   banterId: string;
@@ -89,4 +95,5 @@ export interface Message {
   sharedDropId: string | null;
   createdAt: string;
   seenAt: string | null;
+  reactions: MessageReaction[];
 }

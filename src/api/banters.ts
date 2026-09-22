@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { BanterListItem, Message } from "./types";
+import type { BanterListItem, Message, MessageReaction } from "./types";
 
 export function getBanters() {
   return apiFetch<{ items: BanterListItem[] }>("/api/banters");
@@ -21,6 +21,19 @@ export function sendMessage(
 
 export function sendTyping(banterId: string) {
   return apiFetch<void>(`/api/banters/${banterId}/typing`, { method: "POST" });
+}
+
+export function reactToMessage(messageId: string, emoji: string) {
+  return apiFetch<{ reactions: MessageReaction[] }>(`/api/banters/messages/${messageId}/reactions`, {
+    method: "POST",
+    body: JSON.stringify({ emoji }),
+  });
+}
+
+export function unreactToMessage(messageId: string) {
+  return apiFetch<{ reactions: MessageReaction[] }>(`/api/banters/messages/${messageId}/reactions`, {
+    method: "DELETE",
+  });
 }
 
 export function createBanter(userId: string) {
