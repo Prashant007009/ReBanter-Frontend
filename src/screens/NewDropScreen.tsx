@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "flex-end",
   },
-  mediaPreview: StyleSheet.absoluteFillObject,
+  mediaPreview: StyleSheet.absoluteFill,
   mediaPickerHint: { position: "absolute", alignSelf: "center", top: "45%", fontFamily: fonts.bodyMedium, color: "rgba(23,20,18,0.6)" },
   mediaTagsRow: { flexDirection: "row", gap: 8, padding: 14 },
   mediaTag: { fontFamily: fonts.bodySemibold, fontSize: 11, color: colors.ink, backgroundColor: "rgba(255,253,250,0.92)", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9 },

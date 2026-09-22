@@ -38,7 +38,7 @@ function GridTile({ drop }: { drop: Drop }) {
   if (!uri || failed) return <View style={[styles.gridTile, styles.gridTileFallback]} />;
   return (
     <View style={styles.gridTile}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" onError={() => setFailed(true)} />
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" onError={() => setFailed(true)} />
       {drop.counts.reactions > 0 ? (
         <View style={styles.gridBadge}>
           <ZapIcon size={10} color={colors.surfaceRaised} strokeWidth={2.4} />

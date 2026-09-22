@@ -65,9 +65,9 @@ export function LoopsPlayerScreen({ route }: Props) {
   return (
     <View style={styles.container}>
       {cover ? (
-        <Image source={{ uri: cover.url }} style={StyleSheet.absoluteFillObject} />
+        <Image source={{ uri: cover.url }} style={StyleSheet.absoluteFill} />
       ) : (
-        <LinearGradient colors={["#2B2118", "#584232", "#1A1510"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={["#2B2118", "#584232", "#1A1510"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />
       )}
       <View style={styles.scrim} />
 
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#2B2118" },
   center: { flex: 1, backgroundColor: "#2B2118", alignItems: "center", justifyContent: "center", padding: 24 },
   emptyText: { color: colors.surfaceRaised, textAlign: "center" },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(23,20,18,0.35)" },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(23,20,18,0.35)" },
   topBar: { position: "absolute", top: 56, left: 20, right: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 52 },
   topBarLeft: { flexDirection: "row", alignItems: "center", gap: 18 },
   roomLabel: { fontFamily: fonts.display, fontSize: 19, color: colors.surfaceRaised },
