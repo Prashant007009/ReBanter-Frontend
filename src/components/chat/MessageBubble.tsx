@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   bubbleText: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.ink },
   bubbleTextMine: { color: "#fff" },
-  stickerText: { fontSize: 52, lineHeight: 60, marginVertical: 4 },
+  stickerText: { fontSize: 52, lineHeight: 52 },
   imageBubble: { width: 220, height: 220, borderRadius: 20, overflow: "hidden", shadowColor: "#171412", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
   imageBubbleImage: { width: "100%", height: "100%", backgroundColor: colors.hairline },
   reactionsBadge: {

@@ -295,6 +295,7 @@ export function BanterThreadScreen({ route, navigation }: Props) {
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
             data={STICKERS}
             keyExtractor={(s) => s}
             contentContainerStyle={styles.quickReplies}
@@ -308,12 +309,15 @@ export function BanterThreadScreen({ route, navigation }: Props) {
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
             data={QUICK_REPLIES}
             keyExtractor={(q) => q}
             contentContainerStyle={styles.quickReplies}
             renderItem={({ item }) => (
               <Pressable style={styles.quickReplyChip} onPress={() => sendText(item)}>
-                <Text style={styles.quickReplyText}>{item}</Text>
+                <Text style={styles.quickReplyText} numberOfLines={1}>
+                  {item}
+                </Text>
               </Pressable>
             )}
           />
@@ -383,10 +387,35 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: fonts.displaySemibold, fontSize: 18, color: colors.ink, marginTop: 8 },
   emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, textAlign: "center" },
   error: { color: colors.cheer, textAlign: "center", paddingVertical: 6, backgroundColor: colors.surface },
-  quickReplies: { paddingHorizontal: 18, paddingVertical: 12, gap: 8, backgroundColor: colors.surface },
-  quickReplyChip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
+  // Fixed height on the FlatList itself (not just contentContainerStyle) —
+  // without it, RN Web's flexbox translation can stretch un-sized row
+  // children to fill an unbounded cross-axis instead of sizing to content.
+  chipRow: { flexGrow: 0, flexShrink: 0, height: 60, backgroundColor: colors.surface },
+  quickReplies: { paddingHorizontal: 18, alignItems: "center", gap: 8, height: 60 },
+  quickReplyChip: {
+    flexShrink: 0,
+    alignSelf: "center",
+    height: 36,
+    justifyContent: "center",
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+  },
   quickReplyText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
-  stickerChip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 999, width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  stickerChip: {
+    flexShrink: 0,
+    alignSelf: "center",
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 999,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   stickerChipText: { fontSize: 22 },
   composerRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, paddingHorizontal: 12, paddingBottom: 28, paddingTop: 8, backgroundColor: colors.canvas },
   composerSideButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
