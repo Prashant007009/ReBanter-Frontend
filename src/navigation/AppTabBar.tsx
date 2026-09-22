@@ -149,5 +149,5 @@ const styles = StyleSheet.create({
   label: { fontSize: 10, fontFamily: fonts.bodyMedium, color: colors.inkMuted },
   labelActive: { fontFamily: fonts.bodyBold, color: colors.accent },
   meAvatarRing: { width: 23, height: 23, borderRadius: 8, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  dropButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.cheer, alignItems: "center", justifyContent: "center", marginTop: -7 },
+  dropButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", marginTop: -7 },
 });

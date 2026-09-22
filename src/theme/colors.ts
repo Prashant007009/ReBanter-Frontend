@@ -28,15 +28,14 @@ export const colors = {
   hairlineStrong: "rgba(23,20,18,0.18)",
   hairlineSoft: "rgba(23,20,18,0.08)",
 
-  accent: "#5B3CFF",
-  accentPressed: "#4B2FE0",
-  accentTint: "#EDE8FF",
+  accent: "#4F378A",
+  accentPressed: "#3D2A6E",
+  accentTint: "#EDE7F7",
 
   cheer: "#E2542F",
   cheerTint: "#FDEDE7",
   success: "#3BBF7C",
   danger: "#C43B2E",
-  messageBadge: "#0078AA",
   chevronMuted: "rgba(23,20,18,0.32)",
   chipMuted: "rgba(23,20,18,0.06)",
   divider: "rgba(23,20,18,0.08)",

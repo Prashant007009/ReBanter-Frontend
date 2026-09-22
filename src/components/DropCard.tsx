@@ -88,16 +88,16 @@ export function DropCard({ drop }: { drop: Drop }) {
       <View style={styles.reactions}>
         <View style={styles.reactionsLeft}>
           <Pressable style={styles.reactionButton} onPress={onCheer}>
-            <HeartIcon size={16} color={cheered ? colors.cheer : colors.ink} filled={cheered} strokeWidth={1.8} />
+            <HeartIcon size={24} color={cheered ? colors.cheer : colors.ink} filled={cheered} strokeWidth={1.8} />
             <Text style={styles.reactionCount}>{cheers}</Text>
           </Pressable>
           <Pressable style={styles.reactionButton} onPress={() => setCommentsOpen(true)}>
-            <MessageSquareIcon size={16} color={colors.ink} />
+            <MessageSquareIcon size={24} color={colors.ink} />
             <Text style={styles.reactionCount}>{replyCount}</Text>
           </Pressable>
         </View>
         <Pressable style={styles.reactionButton} onPress={onSend}>
-          <SendIcon size={16} color={reposted ? colors.accent : colors.ink} />
+          <SendIcon size={24} color={reposted ? colors.accent : colors.ink} />
         </Pressable>
       </View>
 
@@ -113,10 +113,6 @@ export function DropCard({ drop }: { drop: Drop }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: 16,
     padding: 16,
     gap: 12,
   },
