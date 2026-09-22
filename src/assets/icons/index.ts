@@ -34,3 +34,4 @@ export { ArrowUpLeftIcon } from "./ArrowUpLeftIcon";
 export { AtSignIcon } from "./AtSignIcon";
 export { PlusCircleIcon } from "./PlusCircleIcon";
 export { EditIcon } from "./EditIcon";
+export { SmileIcon } from "./SmileIcon";

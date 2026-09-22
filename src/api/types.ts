@@ -83,7 +83,9 @@ export interface Message {
   banterId: string;
   senderId: string;
   sender?: UserSummary;
+  kind: "text" | "image" | "sticker";
   body: string | null;
+  imageUrl: string | null;
   sharedDropId: string | null;
   createdAt: string;
   seenAt: string | null;
