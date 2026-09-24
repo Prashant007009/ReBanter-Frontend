@@ -133,7 +133,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
   return (
     <ScreenGradient style={styles.container}>
       <View style={styles.topBar}>
-        <Pressable hitSlop={10} onPress={() => navigation.goBack()}>
+        <Pressable hitSlop={10} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
           <ChevronLeftIcon size={22} color={colors.onDark} />
         </Pressable>
         <Text style={styles.topBarHandle} numberOfLines={1}>

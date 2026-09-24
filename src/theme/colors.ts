@@ -42,6 +42,33 @@ export const colors = {
   dashedBorder: "rgba(23,20,18,0.24)",
 } as const;
 
+// Direct-message thread palette — the chat screen is dark with lime "mine"
+// bubbles (source: claude.ai design "Rebanter Chat"), independent of the
+// light app theme above.
+export const chat = {
+  bg: "#0C0C0E",
+  ink: "#F5F3EF",
+  inkMuted: "#9A98A2",
+  inkSoft: "#B9B7C0",
+  hairline: "#1C1C21",
+  bubbleTheirs: "#222228",
+  bubbleMine: "#C8F169",
+  onMine: "#0C0C0E",
+  onMineMuted: "#44511A",
+  readTick: "#1F4FE0",
+  field: "#18181C",
+  fieldBorder: "#26262C",
+  tray: "#131316",
+  trayBorder: "#222228",
+  chip: "#222228",
+  chipActive: "#2A2A31",
+  popBorder: "#34343B",
+  popMore: "#2E2E35",
+  dot: "#C9C7CF",
+  peer: "#FF8A5B",
+  danger: "#FF6B6B",
+} as const;
+
 // Fixed mark colors for the app icon and launch splash — the ReBanter
 // logomark predates the in-app navy retheme and keeps its original
 // violet/ember/bone palette regardless of `colors` above.

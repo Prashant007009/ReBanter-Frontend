@@ -44,7 +44,7 @@ export function StreamScreen() {
         <Text style={styles.wordmark}>ReBanter.</Text>
         <View style={styles.headerIcons}>
           <SearchIcon size={24} color={colors.accent} />
-          <Pressable style={styles.messageButton} onPress={() => navigation.navigate("Banters")}>
+          <Pressable style={styles.messageButton} onPress={() => navigation.navigate("Banters")} accessibilityRole="button" accessibilityLabel="Open banters">
             <MessageIcon size={24} color={colors.accent} />
           </Pressable>
         </View>

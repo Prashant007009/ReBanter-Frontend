@@ -26,6 +26,8 @@ class RealtimeSocket {
     const ws = new WebSocket(`${WS_URL}/ws?token=${encodeURIComponent(token)}`);
     this.ws = ws;
 
+    // Local pseudo-event so screens can resync state (e.g. presence) after a reconnect.
+    ws.onopen = () => this.handlers.get("socket.open")?.forEach((h) => h(null));
     ws.onmessage = (event) => {
       try {
         const { type, payload } = JSON.parse(event.data);

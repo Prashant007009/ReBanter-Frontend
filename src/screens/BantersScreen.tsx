@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { ScreenGradient } from "@/components/ScreenGradient";
 import { SearchIcon, EditIcon } from "@/assets/icons";
 import { PeoplePickerModal } from "@/components/PeoplePickerModal";
+import { messagePreview } from "@/components/chat/expressions";
 import { getBanters, createBanter } from "@/api/banters";
 import { useSession } from "@/session/SessionContext";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -106,7 +107,7 @@ export function BantersScreen() {
               filtered.map((item) => {
                 const other = item.participants[0];
                 const name = item.title ?? other?.displayName ?? "Banter";
-                const preview = item.lastMessage?.body ?? (item.lastMessage ? "Sent a drop" : "Say hi");
+                const preview = item.lastMessage ? messagePreview(item.lastMessage) : "Say hi";
                 const unread = !!item.lastMessage && item.lastMessage.senderId !== user?.id && !item.lastMessage.seenAt;
                 return (
                   <Pressable
