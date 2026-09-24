@@ -4,6 +4,7 @@ import dayjs from "@/lib/dayjs";
 import { chat, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { GifCard } from "./GifCard";
+import { SharedDropCard } from "./SharedDropCard";
 import { EmojiSticker, WordSticker } from "./StickerArt";
 import { ClockTickIcon, DoubleTickIcon, PlusThinIcon, SingleTickIcon } from "./ChatIcons";
 import { QUICK_REACTIONS, decodeSticker, isBigEmoji } from "./expressions";
@@ -87,6 +88,8 @@ export function MessageBubble({
         <Text style={styles.lockedText}>🔒 Can't decrypt this message on this device</Text>
       </View>
     );
+  } else if (message.kind === "drop" && message.dropId) {
+    content = <SharedDropCard dropId={message.dropId} note={message.body} />;
   } else if (message.kind === "sticker") {
     const s = decodeSticker(message.body);
     content =

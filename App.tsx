@@ -7,6 +7,7 @@ import { useFonts, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from "@expo-
 import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
 import { SessionProvider } from "@/session/SessionContext";
 import { RootNavigator } from "@/navigation/RootNavigator";
+import { ToastProvider } from "@/components/stream/Toast";
 import { brand } from "@/theme/colors";
 
 // Every Text style in this app is set via `fonts` in theme/colors.ts (Space
@@ -38,8 +39,10 @@ export default function App() {
   return (
     <View style={{ flex: 1, backgroundColor: brand.violet }} onLayout={onLayout}>
       <SessionProvider>
-        <StatusBar style="dark" />
-        <RootNavigator />
+        <ToastProvider>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </ToastProvider>
       </SessionProvider>
     </View>
   );

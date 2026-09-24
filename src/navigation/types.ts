@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 export type TabParamList = {
   Stream: undefined;
   Roam: undefined;
@@ -11,11 +13,13 @@ export type AuthStackParamList = {
 };
 
 export type RootStackParamList = {
-  Tabs: undefined;
+  Tabs: NavigatorScreenParams<TabParamList> | undefined;
   LoopsPlayer: { roomId: string };
   Banters: undefined;
   BanterThread: { banterId: string; handle: string };
   NewDrop: undefined;
+  NewMoment: undefined;
+  NewTake: { mode: "take" | "poll" };
   Settings: undefined;
   EditProfile: undefined;
   UserProfile: { handle: string };

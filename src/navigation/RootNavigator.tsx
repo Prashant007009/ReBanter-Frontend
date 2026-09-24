@@ -8,6 +8,8 @@ import { LoopsPlayerScreen } from "@/screens/LoopsPlayerScreen";
 import { BantersScreen } from "@/screens/BantersScreen";
 import { BanterThreadScreen } from "@/screens/BanterThreadScreen";
 import { NewDropScreen } from "@/screens/NewDropScreen";
+import { NewMomentScreen } from "@/screens/NewMomentScreen";
+import { NewTakeScreen } from "@/screens/NewTakeScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { EditProfileScreen } from "@/screens/EditProfileScreen";
 import { UserProfileScreen } from "@/screens/UserProfileScreen";
@@ -40,6 +42,8 @@ function AppNavigator() {
           emulator in this environment. Fine to revisit once tested on a
           real device/simulator. */}
       <Stack.Screen name="NewDrop" component={NewDropScreen} />
+      <Stack.Screen name="NewMoment" component={NewMomentScreen} />
+      <Stack.Screen name="NewTake" component={NewTakeScreen} />
     </Stack.Navigator>
   );
 }

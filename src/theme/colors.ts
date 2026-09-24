@@ -69,6 +69,35 @@ export const chat = {
   danger: "#FF6B6B",
 } as const;
 
+// Stream + tab bar (source: claude.ai design "Rebanter Stream") — same dark
+// family as `chat`, plus the feed's card, sheet and menu surfaces.
+export const stream = {
+  bg: "#0C0C0E",
+  ink: "#F5F3EF",
+  inkMuted: "#9A98A2",
+  inkSoft: "#D6D4DB",
+  inkFaint: "#77757E",
+  lime: "#C8F169",
+  onLime: "#0C0C0E",
+  red: "#FF4D4D",
+  redSoft: "#FF6B6B",
+  divider: "#18181C",
+  card: "#16161A",
+  cardBorder: "#24242A",
+  raised: "#1C1C21",
+  raisedBorder: "#2A2A31",
+  raisedHover: "#26262C",
+  sheet: "#141417",
+  sheetBorder: "#26262C",
+  chip: "#222228",
+  ringSeen: "#34343B",
+  headerGlass: "rgba(12,12,14,0.88)",
+  navGlass: "rgba(24,24,28,0.94)",
+} as const;
+
+/** Space the floating tab bar takes over tab screens' content (bar + home-indicator gap). */
+export const TAB_BAR_CLEARANCE = 104;
+
 // Fixed mark colors for the app icon and launch splash — the ReBanter
 // logomark predates the in-app navy retheme and keeps its original
 // violet/ember/bone palette regardless of `colors` above.

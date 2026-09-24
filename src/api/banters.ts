@@ -34,6 +34,10 @@ type EncryptedBanterListItem = Omit<BanterListItem, "lastMessage"> & {
  * (e.g. they set up E2E after the key was made), so they can read the whole
  * history without anyone having to reopen that particular thread.
  */
+export function getUnreadBanterCount() {
+  return apiFetch<{ count: number }>("/api/banters/unread-count");
+}
+
 export async function getBanters() {
   const res = await apiFetch<{ items: EncryptedBanterListItem[] }>("/api/banters");
   return {
@@ -54,13 +58,13 @@ export async function getMessages(banterId: string, before?: string): Promise<Me
 
 export async function sendMessage(
   banterId: string,
-  input: { body?: string; imageUrl?: string; kind?: "text" | "image" | "sticker" }
+  input: { body?: string; imageUrl?: string; dropId?: string; kind?: "text" | "image" | "sticker" | "drop" }
 ): Promise<Message> {
   const me = currentIdentity();
   const key = cachedBanterKey(banterId);
   if (!me || !key) throw new Error("Encryption isn't ready for this banter yet");
   const kind = input.kind ?? "text";
-  const content = { body: input.body ?? null, imageUrl: input.imageUrl ?? null };
+  const content = { body: input.body ?? null, imageUrl: input.imageUrl ?? null, dropId: input.dropId ?? null };
   const ciphertext = encryptMessage(key.key, { banterId, keyId: key.keyId, senderId: me.userId, kind }, content);
   const raw = await apiFetch<EncryptedMessage>(`/api/banters/${banterId}/messages`, {
     method: "POST",

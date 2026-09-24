@@ -2,15 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { colors, fonts } from "@/theme/colors";
+import { colors, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { ScreenGradient } from "@/components/ScreenGradient";
 import { HamburgerIcon, ZapIcon, ArrowRightIcon, MusicNoteIcon, PinIcon, VideoIcon } from "@/assets/icons";
 import type { IconProps } from "@/assets/icons";
 import { useSession } from "@/session/SessionContext";
-import { getFeed } from "@/api/drops";
+import { apiFetch } from "@/api/client";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Drop } from "@/api/types";
+import { takeTheme } from "@/components/stream/format";
 import type { RootStackParamList } from "@/navigation/types";
 
 function GridDotsIcon({ size = 18, color = colors.ink }: IconProps) {
@@ -35,6 +36,18 @@ type Tab = (typeof TABS)[number]["key"];
 function GridTile({ drop }: { drop: Drop }) {
   const [failed, setFailed] = useState(false);
   const uri = drop.media[0]?.url;
+  if (!uri && drop.body) {
+    // Hot takes and polls have no photo — show the statement on its card colour.
+    const theme = drop.kind === "take" ? takeTheme(drop.id) : { bg: "#16161A", ink: "#F5F3EF" };
+    return (
+      <View style={[styles.gridTile, styles.gridTileFallback, { backgroundColor: theme.bg, padding: 8 }]}>
+        <Text style={{ color: theme.ink, fontFamily: fonts.display, fontSize: 12, lineHeight: 14, textAlign: "center" }} numberOfLines={5}>
+          {drop.kind === "poll" ? "📊 " : "🔥 "}
+          {drop.body}
+        </Text>
+      </View>
+    );
+  }
   if (!uri || failed) return <View style={[styles.gridTile, styles.gridTileFallback]} />;
   return (
     <View style={styles.gridTile}>
@@ -64,8 +77,8 @@ export function ProfileScreen() {
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await getFeed();
-      setMyDrops(res.items.filter((d) => d.author.id === user.id));
+      const res = await apiFetch<{ items: Drop[] }>(`/api/users/${user.handle}/drops`);
+      setMyDrops(res.items);
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +196,7 @@ export function ProfileScreen() {
           </View>
         }
         renderItem={({ item }) => <GridTile drop={item} />}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       />
     </ScreenGradient>
   );

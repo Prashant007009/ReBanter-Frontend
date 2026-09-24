@@ -20,7 +20,8 @@ function extractHashtags(text: string): string[] {
 type Props = NativeStackScreenProps<RootStackParamList, "NewDrop">;
 
 export function NewDropScreen({ navigation }: Props) {
-  const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const image = images[0] ?? null;
   const [caption, setCaption] = useState("");
   const [place, setPlace] = useState("");
   const [alsoLoop, setAlsoLoop] = useState(false);
@@ -40,13 +41,15 @@ export function NewDropScreen({ navigation }: Props) {
       setError("Photo library access is needed to pick a drop");
       return;
     }
+    // Up to 10 photos — more than one becomes a swipeable carousel in Stream.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
-      aspect: [4, 5],
-      allowsEditing: true,
+      allowsMultipleSelection: true,
+      selectionLimit: 10,
+      orderedSelection: true,
     });
-    if (!result.canceled) setImage(result.assets[0]);
+    if (!result.canceled) setImages(result.assets.slice(0, 10));
   }
 
   async function onPublish() {
@@ -57,16 +60,16 @@ export function NewDropScreen({ navigation }: Props) {
     setError(null);
     setIsPublishing(true);
     try {
-      const contentType = image.mimeType ?? "image/jpeg";
-      const url = await uploadLocalAsset(image.uri, contentType);
+      const urls = await Promise.all(images.map((img) => uploadLocalAsset(img.uri, img.mimeType ?? "image/jpeg")));
       const mentions = taggedCrew.map((p) => `@${p.handle}`).join(" ");
       const fullCaption = [caption.trim(), mentions].filter(Boolean).join(" ");
       await apiFetch("/api/drops", {
         method: "POST",
         body: JSON.stringify({
+          kind: "post",
           caption: fullCaption || undefined,
           location: place.trim() || undefined,
-          media: [{ url, kind: "image" }],
+          media: urls.map((url) => ({ url, kind: "image" })),
         }),
       });
       navigation.goBack();
@@ -92,10 +95,10 @@ export function NewDropScreen({ navigation }: Props) {
       <Pressable style={styles.mediaPicker} onPress={pickImage}>
         {image ? <Image source={{ uri: image.uri }} style={styles.mediaPreview} /> : null}
         <View style={styles.mediaTagsRow}>
-          <Text style={styles.mediaTag}>Ratio 4:5</Text>
-          <Text style={styles.mediaTag}>Tone: Dusk</Text>
+          {images.length > 1 ? <Text style={styles.mediaTag}>Carousel · {images.length} photos</Text> : null}
+          <Text style={styles.mediaTag}>{image ? "Tap to change" : "Up to 10 photos"}</Text>
         </View>
-        {!image ? <Text style={styles.mediaPickerHint}>Tap to add a photo</Text> : null}
+        {!image ? <Text style={styles.mediaPickerHint}>Tap to add photos</Text> : null}
       </Pressable>
 
       <View style={styles.captionCard}>

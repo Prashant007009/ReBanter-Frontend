@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import dayjs from "@/lib/dayjs";
-import { colors, fonts } from "@/theme/colors";
+import { colors, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
 import { ScreenGradient } from "@/components/ScreenGradient";
 import { StarOffIcon, ArrowUpLeftIcon, AtSignIcon, PlusCircleIcon, UserIcon } from "@/assets/icons";
 import { getPulse, markAllRead } from "@/api/pulse";
@@ -208,7 +208,7 @@ export function PulseScreen() {
           data={[0]}
           keyExtractor={() => "pulse-body"}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           ListEmptyComponent={<Text style={styles.empty}>Nothing here yet.</Text>}
           renderItem={() => (
             <View>

@@ -120,7 +120,7 @@ export function unwrapBanterKey(wrapped: string, keyId: string, identity: Identi
 
 // ---- Messages ------------------------------------------------------------
 
-export type MessageContent = { body: string | null; imageUrl: string | null };
+export type MessageContent = { body: string | null; imageUrl: string | null; dropId?: string | null };
 type MessageContext = { banterId: string; keyId: string; senderId: string; kind: string };
 
 function messageAad({ banterId, keyId, senderId, kind }: MessageContext) {
@@ -129,7 +129,7 @@ function messageAad({ banterId, keyId, senderId, kind }: MessageContext) {
 
 export function encryptMessage(key: Uint8Array, ctx: MessageContext, content: MessageContent): string {
   const nonce = randomBytes(NONCE_LEN);
-  const ct = xchacha20poly1305(key, nonce, messageAad(ctx)).encrypt(enc.encode(JSON.stringify({ b: content.body, i: content.imageUrl })));
+  const ct = xchacha20poly1305(key, nonce, messageAad(ctx)).encrypt(enc.encode(JSON.stringify({ b: content.body, i: content.imageUrl, ...(content.dropId ? { d: content.dropId } : {}) })));
   return toBase64(concat(nonce, ct));
 }
 
@@ -137,6 +137,6 @@ export function encryptMessage(key: Uint8Array, ctx: MessageContext, content: Me
 export function decryptMessage(key: Uint8Array, ctx: MessageContext, ciphertext: string): MessageContent {
   const raw = fromBase64(ciphertext);
   const plain = xchacha20poly1305(key, raw.subarray(0, NONCE_LEN), messageAad(ctx)).decrypt(raw.subarray(NONCE_LEN));
-  const parsed = JSON.parse(dec.decode(plain)) as { b?: string | null; i?: string | null };
-  return { body: parsed.b ?? null, imageUrl: parsed.i ?? null };
+  const parsed = JSON.parse(dec.decode(plain)) as { b?: string | null; i?: string | null; d?: string | null };
+  return { body: parsed.b ?? null, imageUrl: parsed.i ?? null, dropId: parsed.d ?? null };
 }

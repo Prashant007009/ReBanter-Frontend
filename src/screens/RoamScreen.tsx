@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vi
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, fonts } from "@/theme/colors";
+import { colors, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
 import { SearchIcon } from "@/assets/icons";
 import { Avatar } from "@/components/Avatar";
 import { ScreenGradient } from "@/components/ScreenGradient";
@@ -155,7 +155,7 @@ export function RoamScreen() {
           keyExtractor={() => "roam-body"}
           onRefresh={load}
           refreshing={isLoading}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           renderItem={() => (
             <View>
               <View style={styles.section}>

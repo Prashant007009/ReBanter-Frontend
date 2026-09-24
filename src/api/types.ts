@@ -12,14 +12,52 @@ export interface Media {
   position: number;
 }
 
+export type DropKind = "post" | "take" | "poll";
+
 export interface Drop {
   id: string;
   author: UserSummary;
+  kind?: DropKind;
+  /** Hot take statement or poll question. */
+  body?: string | null;
   caption: string | null;
   location: string | null;
   createdAt: string;
   media: Media[];
   counts: { reactions: number; replies: number };
+}
+
+/** A Stream card: the drop plus the viewer's state and everything the card renders. */
+export interface StreamDrop extends Drop {
+  kind: DropKind;
+  author: UserSummary & { isVerified: boolean };
+  relationship: Relationship;
+  counts: { reactions: number; likes: number; saves: number; shares: number; replies: number };
+  likedByMe: boolean;
+  savedByMe: boolean;
+  poll: { options: { id: string; label: string; votes: number }[]; totalVotes: number; myVote: string | null } | null;
+  take: { facts: number; cap: number; myStance: "facts" | "cap" | null } | null;
+  topReply: { author: Omit<UserSummary, "id">; body: string; likeCount: number } | null;
+}
+
+export type StreamTab = "forYou" | "following" | "takes";
+
+export interface MomentFrame {
+  id: string;
+  mediaUrl: string | null;
+  caption: string | null;
+  captionBg: string | null;
+  captionInk: string | null;
+  createdAt: string;
+  seen: boolean;
+  likedByMe: boolean;
+}
+
+export interface MomentGroup {
+  author: UserSummary;
+  frames: MomentFrame[];
+  allSeen: boolean;
+  live: boolean;
 }
 
 export interface Reply {
@@ -89,10 +127,12 @@ export interface Message {
   banterId: string;
   senderId: string;
   sender?: UserSummary;
-  kind: "text" | "image" | "sticker";
+  kind: "text" | "image" | "sticker" | "drop";
   /** Decrypted on device — the server only ever holds ciphertext. */
   body: string | null;
   imageUrl: string | null;
+  /** For kind "drop": the shared drop (carried inside the encrypted payload). */
+  dropId?: string | null;
   /** True when this device doesn't have (or can't verify) the key for this message. */
   undecryptable?: boolean;
   sharedDropId: string | null;
@@ -102,7 +142,7 @@ export interface Message {
 }
 
 /** A message as it travels over the wire: content is end-to-end encrypted. */
-export type EncryptedMessage = Omit<Message, "body" | "imageUrl" | "undecryptable"> & { ciphertext: string; keyId: string };
+export type EncryptedMessage = Omit<Message, "body" | "imageUrl" | "dropId" | "undecryptable"> & { ciphertext: string; keyId: string };
 
 export interface MessagePage {
   items: Message[];

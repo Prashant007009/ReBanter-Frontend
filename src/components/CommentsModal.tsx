@@ -12,14 +12,15 @@ import {
   View,
 } from "react-native";
 import dayjs from "@/lib/dayjs";
-import { colors, fonts } from "@/theme/colors";
+import { fonts, stream } from "@/theme/colors";
 import { Avatar } from "./Avatar";
-import { ArrowRightIcon, HeartIcon, ReplyIcon } from "@/assets/icons";
+import { HeartIcon, ReplyIcon } from "@/assets/icons";
 import { getReplies, replyToDrop, likeReply, unlikeReply } from "@/api/drops";
 import { search } from "@/api/search";
 import { useSession } from "@/session/SessionContext";
 import type { Reply, UserSummary } from "@/api/types";
 
+const QUICK_EMOJI = ["❤️", "🙌", "🔥", "👏", "😢", "😍", "😮", "😂"];
 const MENTION_FRAGMENT_RE = /(?:^|\s)@([a-z0-9._]*)$/i;
 
 function trailingMentionFragment(text: string): string | null {
@@ -73,11 +74,11 @@ function CommentRow({
         <Text style={styles.rowBody}>{renderBody(comment.body, styles.rowBody, styles.mention)}</Text>
         <View style={styles.rowActions}>
           <Pressable style={styles.rowAction} onPress={() => onToggleLike(comment)} hitSlop={6}>
-            <HeartIcon size={15} color={comment.likedByMe ? colors.cheer : colors.inkFaint} filled={comment.likedByMe} strokeWidth={1.8} />
+            <HeartIcon size={15} color={comment.likedByMe ? stream.red : stream.inkMuted} filled={comment.likedByMe} strokeWidth={1.8} />
             {comment.likeCount > 0 ? <Text style={styles.rowActionText}>{comment.likeCount}</Text> : null}
           </Pressable>
           <Pressable style={styles.rowAction} onPress={() => onReply(comment)} hitSlop={6}>
-            <ReplyIcon size={14} color={colors.inkFaint} strokeWidth={1.8} />
+            <ReplyIcon size={14} color={stream.inkMuted} strokeWidth={1.8} />
             <Text style={styles.rowActionText}>Reply</Text>
           </Pressable>
         </View>
@@ -209,14 +210,11 @@ export function CommentsModal({
       <KeyboardAvoidingView style={styles.sheet} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.handle} />
         <View style={styles.header}>
-          <Text style={styles.title}>Comments{total > 0 ? ` (${total})` : ""}</Text>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Text style={styles.close}>Close</Text>
-          </Pressable>
+          <Text style={styles.title}>Banter · {total}</Text>
         </View>
 
         {isLoading ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={colors.ink} />
+          <ActivityIndicator style={{ marginTop: 30 }} color={stream.inkMuted} />
         ) : (
           <FlatList
             ref={listRef}
@@ -263,19 +261,38 @@ export function CommentsModal({
           </View>
         ) : null}
 
+        <View style={styles.quickRow}>
+          {QUICK_EMOJI.map((e) => (
+            <Pressable key={e} style={({ pressed }) => [styles.quickButton, pressed && { backgroundColor: stream.raised }]} onPress={() => setDraft((d) => d + e)}>
+              <Text style={styles.quickEmoji}>{e}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         <View style={styles.composerRow}>
-          {user ? <Avatar handle={user.handle} displayName={user.displayName} avatarUrl={user.avatarUrl} size={32} radius={11} /> : null}
-          <TextInput
-            style={styles.composerInput}
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Add a comment…"
-            placeholderTextColor={colors.inkFaint}
-            multiline
-          />
-          <Pressable style={styles.sendButton} onPress={onSend} disabled={!draft.trim() || isSending}>
-            {isSending ? <ActivityIndicator size="small" color={colors.ink} /> : <ArrowRightIcon size={17} color={colors.ink} strokeWidth={2.2} />}
-          </Pressable>
+          {user ? <Avatar handle={user.handle} displayName={user.displayName} avatarUrl={user.avatarUrl} size={34} radius={12} /> : null}
+          <View style={styles.composerPill}>
+            <TextInput
+              style={styles.composerInput}
+              value={draft}
+              onChangeText={setDraft}
+              onSubmitEditing={onSend}
+              placeholder={replyingTo ? `Reply to ${replyingTo.handle}…` : "Add some banter…"}
+              placeholderTextColor="#8C8A94"
+              returnKeyType="send"
+            />
+            <Pressable
+              style={[styles.sendButton, { backgroundColor: draft.trim() ? stream.lime : stream.raisedHover }]}
+              onPress={onSend}
+              disabled={!draft.trim() || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color={stream.onLime} />
+              ) : (
+                <Text style={[styles.sendText, { color: draft.trim() ? stream.onLime : stream.inkFaint }]}>Post</Text>
+              )}
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -283,90 +300,40 @@ export function CommentsModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(15,14,71,0.5)" },
-  sheet: { height: "82%", backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 26, borderTopRightRadius: 26, overflow: "hidden" },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.hairlineStrong, alignSelf: "center", marginTop: 10 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.hairlineSoft,
-  },
-  title: { fontFamily: fonts.displaySemibold, fontSize: 16, color: colors.ink },
-  close: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.ink },
-  list: { paddingHorizontal: 20, paddingVertical: 16, flexGrow: 1 },
-  separator: { height: 18 },
-  row: { flexDirection: "row", gap: 12 },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
+  sheet: { height: "78%", backgroundColor: stream.sheet, borderTopWidth: 1, borderColor: stream.sheetBorder, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
+  handle: { width: 38, height: 4, borderRadius: 4, backgroundColor: "#3A3A42", alignSelf: "center", marginTop: 9 },
+  header: { alignItems: "center", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#1F1F24" },
+  title: { fontFamily: fonts.display, fontSize: 16, color: stream.ink },
+  list: { paddingHorizontal: 16, paddingVertical: 14, flexGrow: 1 },
+  separator: { height: 16 },
+  row: { flexDirection: "row", gap: 10 },
   rowNested: { marginTop: 14 },
-  rowTopLine: { flexDirection: "row", alignItems: "center", gap: 8 },
-  rowHandle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.ink },
-  rowTime: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
-  rowBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.ink, marginTop: 4 },
-  mention: { fontFamily: fonts.bodySemibold, fontSize: 14, lineHeight: 20, color: colors.cheer },
-  rowActions: { flexDirection: "row", alignItems: "center", gap: 18, marginTop: 8 },
+  rowTopLine: { flexDirection: "row", alignItems: "center", gap: 6 },
+  rowHandle: { fontFamily: fonts.bodySemibold, fontSize: 13, color: stream.ink },
+  rowTime: { fontFamily: fonts.body, fontSize: 13, color: stream.inkMuted },
+  rowBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 19.6, color: stream.ink, marginTop: 3 },
+  mention: { fontFamily: fonts.bodySemibold, fontSize: 14, lineHeight: 19.6, color: stream.lime },
+  rowActions: { flexDirection: "row", alignItems: "center", gap: 18, marginTop: 6 },
   rowAction: { flexDirection: "row", alignItems: "center", gap: 5 },
-  rowActionText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.inkFaint },
-  repliesBlock: {
-    marginTop: 4,
-    paddingLeft: 14,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.hairlineSoft,
-  },
+  rowActionText: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: stream.inkMuted },
+  repliesBlock: { marginTop: 4, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: stream.raised },
   empty: { alignItems: "center", paddingTop: 40 },
-  emptyTitle: { fontFamily: fonts.displaySemibold, fontSize: 15, color: colors.ink },
-  emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, marginTop: 5 },
-  error: { color: colors.cheer, textAlign: "center", fontFamily: fonts.body, fontSize: 12, paddingHorizontal: 20, paddingBottom: 6 },
-  mentionCard: {
-    marginHorizontal: 18,
-    marginBottom: 8,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
+  emptyTitle: { fontFamily: fonts.display, fontSize: 15, color: stream.ink },
+  emptySubtitle: { fontFamily: fonts.body, fontSize: 13, color: stream.inkMuted, marginTop: 5 },
+  error: { color: stream.redSoft, textAlign: "center", fontFamily: fonts.body, fontSize: 12, paddingHorizontal: 20, paddingBottom: 6 },
+  mentionCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: stream.raised, borderWidth: 1, borderColor: stream.raisedBorder, borderRadius: 16, overflow: "hidden" },
   mentionRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
-  mentionHandle: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.ink },
-  replyingChipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginHorizontal: 18,
-    marginBottom: 8,
-    backgroundColor: colors.accentTint,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  replyingChipText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink },
-  replyingChipCancel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
-  composerRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: Platform.OS === "ios" ? 28 : 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairlineSoft,
-  },
-  composerInput: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  sendButton: { width: 38, height: 38, borderRadius: 13, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  mentionHandle: { fontFamily: fonts.bodySemibold, fontSize: 13, color: stream.ink },
+  replyingChipRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 16, marginBottom: 6, backgroundColor: stream.raised, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9 },
+  replyingChipText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: stream.inkSoft },
+  replyingChipCancel: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: stream.lime },
+  quickRow: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: "#1F1F24" },
+  quickButton: { flex: 1, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  quickEmoji: { fontSize: 22 },
+  composerRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingTop: 4, paddingBottom: Platform.OS === "ios" ? 28 : 18 },
+  composerPill: { flex: 1, flexDirection: "row", alignItems: "center", height: 44, paddingLeft: 16, paddingRight: 4, backgroundColor: stream.raised, borderWidth: 1, borderColor: stream.raisedBorder, borderRadius: 22 },
+  composerInput: { flex: 1, minWidth: 0, fontFamily: fonts.body, fontSize: 14.5, color: stream.ink, paddingVertical: 0 },
+  sendButton: { height: 36, paddingHorizontal: 14, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  sendText: { fontFamily: fonts.bodySemibold, fontSize: 13.5 },
 });

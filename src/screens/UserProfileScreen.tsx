@@ -11,6 +11,7 @@ import { sendCrewRequest, acceptCrewRequest, skipCrewRequest } from "@/api/crew"
 import { createBanter } from "@/api/banters";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import type { Drop, PublicUserProfile } from "@/api/types";
+import { takeTheme } from "@/components/stream/format";
 import type { RootStackParamList } from "@/navigation/types";
 
 function GridDotsIcon({ size = 18, color = colors.ink }: IconProps) {
@@ -35,6 +36,18 @@ type Tab = (typeof TABS)[number]["key"];
 function GridTile({ drop }: { drop: Drop }) {
   const [failed, setFailed] = useState(false);
   const uri = drop.media[0]?.url;
+  if (!uri && drop.body) {
+    // Hot takes and polls have no photo — show the statement on its card colour.
+    const theme = drop.kind === "take" ? takeTheme(drop.id) : { bg: "#16161A", ink: "#F5F3EF" };
+    return (
+      <View style={[styles.gridTile, styles.gridTileFallback, { backgroundColor: theme.bg, padding: 8 }]}>
+        <Text style={{ color: theme.ink, fontFamily: fonts.display, fontSize: 12, lineHeight: 14, textAlign: "center" }} numberOfLines={5}>
+          {drop.kind === "poll" ? "📊 " : "🔥 "}
+          {drop.body}
+        </Text>
+      </View>
+    );
+  }
   if (!uri || failed) return <View style={[styles.gridTile, styles.gridTileFallback]} />;
   return (
     <View style={styles.gridTile}>

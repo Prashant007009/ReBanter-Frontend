@@ -116,6 +116,7 @@ export function decodeSticker(body: string | null): StickerContent {
 export function messagePreview(m: Message): string {
   if (m.undecryptable) return "🔒 Encrypted message";
   if (m.kind === "image") return "Sent a photo";
+  if (m.kind === "drop") return "Shared a drop";
   if (m.kind === "sticker") {
     const s = decodeSticker(m.body);
     return s.kind === "gif" ? "Sent a GIF" : s.kind === "text" ? `Sent a sticker: ${s.sticker.text}` : s.emoji;
