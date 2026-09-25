@@ -22,6 +22,7 @@ export type RootStackParamList = {
   NewTake: { mode: "take" | "poll" };
   Tag: { tag: string };
   Drop: { dropId: string };
+  Collection: { type: "save" | "cheer" };
   Settings: undefined;
   EditProfile: undefined;
   UserProfile: { handle: string };

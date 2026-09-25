@@ -15,7 +15,11 @@ export function profileCode(handle: string) {
 /** Accepts rebanter://u/<handle>, rebanter.app/u/<handle> and drop links (…/d/<id>). */
 export function parseCode(data: string): ScanTarget | null {
   const m = data.trim().match(/^(?:rebanter:\/\/|https?:\/\/(?:www\.)?rebanter\.app\/)(u|d)\/([A-Za-z0-9._-]+)/);
-  if (!m) return null;
+  if (!m) {
+    // Profile links shown on Me: https://rebanter.app/<handle>
+    const p = data.trim().match(/^https?:\/\/(?:www\.)?rebanter\.app\/([a-z0-9._]{3,24})\/?$/i);
+    return p ? { kind: "user", handle: p[1] } : null;
+  }
   return m[1] === "u" ? { kind: "user", handle: m[2] } : { kind: "drop", dropId: m[2] };
 }
 

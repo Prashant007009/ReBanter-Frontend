@@ -30,6 +30,13 @@
         {
           "cameraPermission": "ReBanter uses the camera to scan Rebanter codes so you can add people fast."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "ReBanter saves your profile card to your photos when you ask it to.",
+          "isAccessMediaLocationEnabled": false
+        }
       ]
     ]
   }

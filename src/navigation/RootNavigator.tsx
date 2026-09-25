@@ -12,6 +12,7 @@ import { NewMomentScreen } from "@/screens/NewMomentScreen";
 import { NewTakeScreen } from "@/screens/NewTakeScreen";
 import { TagScreen } from "@/screens/TagScreen";
 import { DropScreen } from "@/screens/DropScreen";
+import { CollectionScreen } from "@/screens/CollectionScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { EditProfileScreen } from "@/screens/EditProfileScreen";
 import { UserProfileScreen } from "@/screens/UserProfileScreen";
@@ -48,6 +49,7 @@ function AppNavigator() {
       <Stack.Screen name="NewTake" component={NewTakeScreen} />
       <Stack.Screen name="Tag" component={TagScreen} />
       <Stack.Screen name="Drop" component={DropScreen} />
+      <Stack.Screen name="Collection" component={CollectionScreen} />
     </Stack.Navigator>
   );
 }

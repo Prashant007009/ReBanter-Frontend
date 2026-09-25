@@ -20,7 +20,10 @@ export interface MeProfile {
   windDownAfterMin: number | null;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
-  stats: { drops: number; crew: number };
+  /** Status pill, stored as "emoji label" (e.g. "🛠️ Building things"). */
+  vibe: string | null;
+  hasJoinedRoom: boolean;
+  stats: { drops: number; crew: number; visits: number };
 }
 
 interface IdentityKeys {
