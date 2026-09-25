@@ -45,11 +45,13 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
     };
     check();
     const offNew = realtimeSocket.on("notification.new", () => setHasUnreadPulse(true));
+    const offChanged = realtimeSocket.on("pulse.changed", check);
     // Recheck on every tab switch (covers "just read Pulse"), plus a light poll.
     const interval = setInterval(check, 30_000);
     return () => {
       cancelled = true;
       offNew();
+      offChanged();
       clearInterval(interval);
     };
   }, [user, state.index]);

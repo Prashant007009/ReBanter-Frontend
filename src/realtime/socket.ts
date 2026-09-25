@@ -52,6 +52,11 @@ class RealtimeSocket {
     this.ws = null;
   }
 
+  /** In-app events that ride the same listener registry (e.g. "pulse.changed" after marking read). */
+  emitLocal(type: string, payload: unknown = null) {
+    this.handlers.get(type)?.forEach((h) => h(payload));
+  }
+
   on(type: string, handler: Handler) {
     if (!this.handlers.has(type)) this.handlers.set(type, new Set());
     this.handlers.get(type)!.add(handler);

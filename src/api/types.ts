@@ -137,6 +137,19 @@ export interface Notification {
   dropId: string | null;
   read: boolean;
   createdAt: string;
+  /** The drop it's about: thumbnail for posts, text for takes. */
+  drop?: { id: string; kind: DropKind; body: string | null; caption: string | null; thumbUrl: string | null } | null;
+  /** The comment behind a REPLY / MENTION. */
+  reply?: { id: string; body: string; parentId: string | null } | null;
+  /** CREW_REQUEST only: whether it's still waiting on you, and how many crew you share. */
+  crew?: { status: "pending" | "accepted" | "skipped"; mutuals: number } | null;
+}
+
+export interface PulseWeek {
+  days: { date: string; count: number }[];
+  cheers: number;
+  replies: number;
+  crew: number;
 }
 
 export interface BanterListItem {

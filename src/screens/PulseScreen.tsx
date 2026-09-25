@@ -1,260 +1,405 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { setStatusBarStyle } from "expo-status-bar";
+import Svg, { Path } from "react-native-svg";
 import dayjs from "@/lib/dayjs";
-import { colors, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
-import { ScreenGradient } from "@/components/ScreenGradient";
-import { StarOffIcon, ArrowUpLeftIcon, AtSignIcon, PlusCircleIcon, UserIcon } from "@/assets/icons";
-import { getPulse, markAllRead } from "@/api/pulse";
+import { stream, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
+import { useToast } from "@/components/stream/Toast";
+import { PulseCard, type CrewUi, type PulseItem } from "@/components/pulse/PulseCard";
+import { getPulse, getPulseWeek, markAllRead, markRead } from "@/api/pulse";
 import { acceptCrewRequest, skipCrewRequest } from "@/api/crew";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
-import type { Notification } from "@/api/types";
+import { replyToDrop } from "@/api/drops";
+import { createBanter } from "@/api/banters";
+import { realtimeSocket } from "@/realtime/socket";
+import type { Notification, PulseWeek } from "@/api/types";
+import type { RootStackParamList, TabParamList } from "@/navigation/types";
 
-const FILTERS = ["All", "Cheers", "Crew", "Mentions"] as const;
-type Filter = (typeof FILTERS)[number];
+type Filter = "all" | "cheers" | "crew" | "mentions";
+const FILTERS: [Filter, string][] = [
+  ["all", "All"],
+  ["cheers", "Cheers"],
+  ["crew", "Crew"],
+  ["mentions", "Mentions"],
+];
+const SKIP_UNDO_MS = 5000;
 
-// Icon-tile tints — 13% washes of the same brand colors used everywhere
-// else (cheer orange, accent violet, ink), one per notification type.
-const CHEER_TINT = "rgba(226,84,47,0.13)";
-const ACCENT_TINT_13 = "rgba(91,60,255,0.13)";
-const INK_TINT = "rgba(23,20,18,0.13)";
+const inFilter = (item: { type: Notification["type"] }, f: Filter) =>
+  f === "all" ||
+  (f === "cheers" && item.type === "CHEER") ||
+  (f === "crew" && (item.type === "CREW_REQUEST" || item.type === "CREW_JOINED")) ||
+  (f === "mentions" && (item.type === "MENTION" || item.type === "REPLY"));
 
-function matchesFilter(n: Notification, filter: Filter): boolean {
-  if (filter === "All") return true;
-  if (filter === "Cheers") return n.type === "CHEER";
-  if (filter === "Crew") return n.type === "CREW_JOINED" || n.type === "CREW_REQUEST";
-  return n.type === "MENTION";
+/** Collapse cheers on the same drop (same day bucket) into one card; everything else stays one-per-notification. */
+function toItems(list: Notification[]): PulseItem[] {
+  const out: PulseItem[] = [];
+  const cheerCards = new Map<string, PulseItem>();
+  for (const n of list) {
+    const bucket = dayjs(n.createdAt).isSame(dayjs(), "day") ? "today" : "earlier";
+    if (n.type === "CHEER" && n.dropId) {
+      const key = `cheer:${n.dropId}:${bucket}`;
+      const card = cheerCards.get(key);
+      if (card) {
+        card.ids.push(n.id);
+        if (n.actor && !card.actors.some((a) => a.id === n.actor!.id)) card.actors.push(n.actor);
+        card.unread = card.unread || !n.read;
+        continue;
+      }
+      const fresh: PulseItem = { key, ids: [n.id], type: n.type, actors: n.actor ? [n.actor] : [], createdAt: n.createdAt, unread: !n.read, drop: n.drop, reply: n.reply, crew: n.crew, dropId: n.dropId };
+      cheerCards.set(key, fresh);
+      out.push(fresh);
+      continue;
+    }
+    out.push({ key: n.id, ids: [n.id], type: n.type, actors: n.actor ? [n.actor] : [], createdAt: n.createdAt, unread: !n.read, drop: n.drop, reply: n.reply, crew: n.crew, dropId: n.dropId });
+  }
+  return out;
 }
 
-function describe(n: Notification): string {
-  const who = n.actor?.displayName ?? "Someone";
-  switch (n.type) {
-    case "CHEER":
-      return `${who} cheered your drop`;
-    case "REPLY":
-      return `${who} replied`;
-    case "CREW_JOINED":
-      return `${who} joined your crew`;
-    case "CREW_REQUEST":
-      return `${who} wants to join your crew`;
-    case "MENTION":
-      return `${who} mentioned you`;
-  }
+/** Heartbeat-style line: a spike per day sized by that day's activity. */
+function sparkPath(counts: number[]) {
+  const max = Math.max(1, ...counts);
+  const base = 34;
+  const pts: string[] = ["M0 34"];
+  counts.forEach((c, i) => {
+    const cx = 12 + (i * 296) / 6;
+    const h = c === 0 ? 0 : 6 + (c / max) * 22;
+    pts.push(`L${(cx - 12).toFixed(1)} ${base}`, `L${(cx - 5).toFixed(1)} ${(base - h).toFixed(1)}`, `L${(cx + 1).toFixed(1)} ${(base + h * 0.4).toFixed(1)}`, `L${(cx + 7).toFixed(1)} ${base}`);
+  });
+  pts.push("L320 34");
+  return pts.join(" ");
 }
 
-function NotificationIcon({ type }: { type: Notification["type"] }) {
-  switch (type) {
-    case "CHEER":
-      return (
-        <View style={[styles.iconTile, { backgroundColor: CHEER_TINT }]}>
-          <StarOffIcon size={16} color={colors.cheer} />
+function WeekCard({ week, unread }: { week: PulseWeek | null; unread: number }) {
+  // Draw-in: drive the dash offset from an Animated value (animated SVG props leak
+  // RN-only attributes onto the DOM on web).
+  const draw = useRef(new Animated.Value(600)).current;
+  const [offset, setOffset] = useState(600);
+  useEffect(() => {
+    const id = draw.addListener(({ value }) => setOffset(value));
+    return () => draw.removeListener(id);
+  }, [draw]);
+  useEffect(() => {
+    if (!week) return;
+    draw.setValue(600);
+    Animated.timing(draw, { toValue: 0, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: false }).start();
+  }, [week, draw]);
+  const counts = week?.days.map((d) => d.count) ?? [0, 0, 0, 0, 0, 0, 0];
+  const labels = week ? week.days.map((d, i) => (i === 6 ? "TODAY" : dayjs(d.date).format("ddd").toUpperCase())) : ["", "", "", "", "", "", "TODAY"];
+
+  return (
+    <View style={styles.week}>
+      <View style={styles.weekTop}>
+        <View style={{ gap: 4 }}>
+          <Text style={styles.eyebrow}>YOUR WEEK</Text>
+          <Text style={styles.headline}>{unread ? `${unread} new ${unread > 1 ? "pings" : "ping"}` : "All caught up"}</Text>
         </View>
-      );
-    case "CREW_JOINED":
-      return (
-        <View style={[styles.iconTile, { backgroundColor: ACCENT_TINT_13 }]}>
-          <UserIcon size={16} color={colors.accent} />
+        <View style={styles.stats}>
+          <Stat value={week?.cheers ?? 0} label="cheers" color="#FF7AB6" />
+          <Stat value={week?.replies ?? 0} label="replies" color="#7B9CFF" />
+          <Stat value={`+${week?.crew ?? 0}`} label="crew" color={stream.lime} />
         </View>
-      );
-    case "REPLY":
-      return (
-        <View style={[styles.iconTile, { backgroundColor: ACCENT_TINT_13 }]}>
-          <ArrowUpLeftIcon size={16} color={colors.accent} />
-        </View>
-      );
-    case "MENTION":
-      return (
-        <View style={[styles.iconTile, { backgroundColor: INK_TINT }]}>
-          <AtSignIcon size={16} color={colors.ink} />
-        </View>
-      );
-    case "CREW_REQUEST":
-      return (
-        <View style={[styles.iconTile, { backgroundColor: CHEER_TINT }]}>
-          <PlusCircleIcon size={16} color={colors.cheer} />
-        </View>
-      );
-  }
+      </View>
+      <Svg width="100%" height={48} viewBox="0 0 320 48" preserveAspectRatio="none">
+        <Path d={sparkPath(counts)} fill="none" stroke={stream.lime} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" strokeDasharray="600" strokeDashoffset={offset} />
+      </Svg>
+      <View style={styles.days}>
+        {labels.map((l, i) => (
+          <Text key={i} style={[styles.day, i === 6 && { color: stream.lime }]}>
+            {l}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function Stat({ value, label, color }: { value: number | string; label: string; color: string }) {
+  return (
+    <View style={{ alignItems: "flex-end", gap: 2 }}>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
 }
 
 export function PulseScreen() {
-  const [items, setItems] = useState<Notification[]>([]);
-  const [filter, setFilter] = useState<Filter>("All");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList> & BottomTabNavigationProp<TabParamList>>();
+  const toast = useToast();
+  const scrollRef = useRef<ScrollView>(null);
+  const [notifications, setNotifications] = useState<Notification[] | null>(null);
+  const [week, setWeek] = useState<PulseWeek | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [crewUi, setCrewUi] = useState<Record<string, CrewUi>>({});
+  const [sent, setSent] = useState<Record<string, string>>({});
+  const pendingSkips = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; userId: string }>());
 
   const load = useCallback(async () => {
-    setError(null);
-    try {
-      const res = await getPulse();
-      setItems(res.items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't load Pulse");
-    } finally {
-      setIsLoading(false);
-    }
+    const [p, w] = await Promise.allSettled([getPulse(), getPulseWeek()]);
+    if (p.status === "fulfilled") setNotifications(p.value.items);
+    else setNotifications((prev) => prev ?? []);
+    if (w.status === "fulfilled") setWeek(w.value);
+    setIsRefreshing(false);
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+      load();
+      return () => setStatusBarStyle("dark");
+    }, [load])
+  );
+
   useEffect(() => {
-    load();
+    const off = realtimeSocket.on("notification.new", () => load());
+    return () => {
+      off();
+    };
   }, [load]);
-  useRefreshOnFocus(load);
 
-  const filtered = useMemo(() => items.filter((n) => matchesFilter(n, filter)), [items, filter]);
-  const today = useMemo(() => filtered.filter((n) => dayjs(n.createdAt).isAfter(dayjs().startOf("day"))), [filtered]);
-  const earlier = useMemo(() => filtered.filter((n) => !dayjs(n.createdAt).isAfter(dayjs().startOf("day"))), [filtered]);
+  // Tapping the Pulse tab again: back to All, back to the top.
+  useEffect(
+    () =>
+      navigation.addListener("tabPress", () => {
+        if (!navigation.isFocused()) return;
+        setFilter("all");
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      }),
+    [navigation]
+  );
 
-  async function onLetIn(n: Notification) {
-    if (!n.actorId) return;
-    setResolvedIds((s) => new Set(s).add(n.id));
-    try {
-      await acceptCrewRequest(n.actorId);
-    } catch {
-      setResolvedIds((s) => {
-        const next = new Set(s);
-        next.delete(n.id);
-        return next;
+  // Leaving with a skip still in its undo window: commit it now.
+  useEffect(() => {
+    const skips = pendingSkips.current;
+    return () => {
+      skips.forEach(({ timer, userId }) => {
+        clearTimeout(timer);
+        skipCrewRequest(userId).catch(() => {});
       });
-    }
-  }
+      skips.clear();
+    };
+  }, []);
 
-  async function onSkip(n: Notification) {
-    if (!n.actorId) return;
-    setResolvedIds((s) => new Set(s).add(n.id));
-    try {
-      await skipCrewRequest(n.actorId);
-    } catch {
-      setResolvedIds((s) => {
-        const next = new Set(s);
-        next.delete(n.id);
-        return next;
-      });
-    }
-  }
+  const items = useMemo(() => toItems(notifications ?? []), [notifications]);
+  const unreadIn = (f: Filter) => items.filter((i) => i.unread && inFilter(i, f)).length;
+  const unread = unreadIn("all");
+  const visible = items.filter((i) => inFilter(i, filter));
+  const groups = [
+    { label: "Today", items: visible.filter((i) => dayjs(i.createdAt).isSame(dayjs(), "day")) },
+    { label: "Earlier", items: visible.filter((i) => !dayjs(i.createdAt).isSame(dayjs(), "day")) },
+  ].filter((g) => g.items.length > 0);
 
-  function renderGroup(label: string, group: Notification[]) {
-    if (group.length === 0) return null;
-    return (
-      <View key={label} style={styles.section}>
-        <Text style={styles.sectionLabel}>{label}</Text>
-        <View style={styles.cardList}>
-          {group.map((item) => {
-            const resolved = resolvedIds.has(item.id);
-            return (
-              <View key={item.id} style={styles.card}>
-                <NotificationIcon type={item.type} />
-                <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
-                  <View style={{ gap: 2 }}>
-                    <Text style={styles.rowText}>{describe(item)}</Text>
-                    <Text style={styles.rowTime}>{dayjs(item.createdAt).fromNow()}</Text>
-                  </View>
-                  {item.type === "CREW_REQUEST" && !resolved ? (
-                    <View style={styles.actions}>
-                      <Pressable style={styles.letIn} onPress={() => onLetIn(item)}>
-                        <Text style={styles.letInText}>Let in</Text>
-                      </Pressable>
-                      <Pressable style={styles.skip} onPress={() => onSkip(item)}>
-                        <Text style={styles.skipText}>Skip</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    );
+  const setRead = useCallback((ids: string[]) => {
+    setNotifications((prev) => prev && prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)));
+    markRead(ids).catch(() => {});
+  }, []);
+
+  const handlers = useRef({
+    onOpen: (_: PulseItem) => {},
+    onReply: async (_: PulseItem, __: string) => {},
+    onLetIn: (_: PulseItem) => {},
+    onSkip: (_: PulseItem) => {},
+    onUndoSkip: (_: PulseItem) => {},
+    onSayHi: (_: PulseItem) => {},
+  });
+  handlers.current = {
+    onOpen(item) {
+      if (item.unread) setRead(item.ids);
+      if (item.dropId && item.type !== "CREW_REQUEST" && item.type !== "CREW_JOINED") navigation.navigate("Drop", { dropId: item.dropId });
+      else if (item.actors[0] && item.type === "CREW_JOINED") navigation.navigate("UserProfile", { handle: item.actors[0].handle });
+    },
+    async onReply(item, text) {
+      const who = item.actors[0]?.handle;
+      if (!item.dropId) return;
+      // Thread under their comment (or the drop itself for a caption/take mention), tagging them so they hear back.
+      const parentId = item.reply ? item.reply.parentId ?? item.reply.id : undefined;
+      const body = who && !text.includes(`@${who}`) ? `@${who} ${text}` : text;
+      try {
+        await replyToDrop(item.dropId, body, parentId);
+        setSent((s) => ({ ...s, [item.key]: text }));
+        if (item.unread) setRead(item.ids);
+        toast("Reply sent");
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Couldn't send that reply");
+        throw err;
+      }
+    },
+    async onLetIn(item) {
+      const other = item.actors[0];
+      if (!other) return;
+      setCrewUi((c) => ({ ...c, [item.key]: "accepted" }));
+      if (item.unread) setRead(item.ids);
+      try {
+        await acceptCrewRequest(other.id);
+        toast(`${other.handle} joined your crew`);
+      } catch (err) {
+        setCrewUi((c) => ({ ...c, [item.key]: "pending" }));
+        toast(err instanceof Error ? err.message : "Couldn't accept that request");
+      }
+    },
+    onSkip(item) {
+      const other = item.actors[0];
+      if (!other) return;
+      setCrewUi((c) => ({ ...c, [item.key]: "skipping" }));
+      if (item.unread) setRead(item.ids);
+      const timer = setTimeout(() => {
+        pendingSkips.current.delete(item.key);
+        setCrewUi((c) => ({ ...c, [item.key]: "skipped" }));
+        skipCrewRequest(other.id).catch(() => {});
+      }, SKIP_UNDO_MS);
+      pendingSkips.current.set(item.key, { timer, userId: other.id });
+    },
+    onUndoSkip(item) {
+      const pending = pendingSkips.current.get(item.key);
+      if (pending) clearTimeout(pending.timer);
+      pendingSkips.current.delete(item.key);
+      setCrewUi((c) => ({ ...c, [item.key]: "pending" }));
+    },
+    async onSayHi(item) {
+      const other = item.actors[0];
+      if (!other) return;
+      try {
+        const banter = await createBanter(other.id);
+        navigation.navigate("BanterThread", { banterId: banter.id, handle: other.handle });
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Couldn't open that chat");
+      }
+    },
+  };
+  const stable = useMemo(
+    () => ({
+      onOpen: (i: PulseItem) => handlers.current.onOpen(i),
+      onReply: (i: PulseItem, t: string) => handlers.current.onReply(i, t),
+      onLetIn: (i: PulseItem) => handlers.current.onLetIn(i),
+      onSkip: (i: PulseItem) => handlers.current.onSkip(i),
+      onUndoSkip: (i: PulseItem) => handlers.current.onUndoSkip(i),
+      onSayHi: (i: PulseItem) => handlers.current.onSayHi(i),
+    }),
+    []
+  );
+
+  async function onMarkAll() {
+    if (!unread) return;
+    setNotifications((prev) => prev && prev.map((n) => ({ ...n, read: true })));
+    toast("All caught up");
+    markAllRead().catch(() => load());
   }
 
   return (
-    <ScreenGradient style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Pulse</Text>
-        <Pressable
-          onPress={async () => {
-            setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-            try {
-              await markAllRead();
-            } catch {
-              // best-effort — a refresh will resync
-            }
-          }}
-        >
-          <Text style={styles.markAllRead}>Mark all read</Text>
-        </Pressable>
-      </View>
-
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersList}
-        data={FILTERS}
-        keyExtractor={(f) => f}
-        contentContainerStyle={styles.filters}
-        renderItem={({ item }) => (
-          <Pressable onPress={() => setFilter(item)} style={[styles.chip, filter === item && styles.chipActive]}>
-            <Text style={[styles.chipText, filter === item && styles.chipTextActive]}>{item}</Text>
+    <View style={styles.container}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE + 6 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => {
+              setIsRefreshing(true);
+              load();
+            }}
+            tintColor={stream.inkMuted}
+          />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            Pulse<Text style={{ color: stream.lime }}>.</Text>
+          </Text>
+          <Pressable
+            onPress={onMarkAll}
+            style={[styles.markAll, { borderColor: unread ? "#34402A" : "#222228" }]}
+            accessibilityLabel={unread ? "Mark all read" : "All read"}
+          >
+            <Svg width={15} height={15} viewBox="0 0 28 20" fill="none" stroke={unread ? stream.lime : stream.inkFaint} strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M2 10.5l4.5 4.5L16 5" />
+              <Path d="M12 14l1 1L22.5 5" />
+            </Svg>
+            <Text style={[styles.markAllText, { color: unread ? stream.lime : stream.inkFaint }]}>{unread ? "Mark all read" : "All read"}</Text>
           </Pressable>
-        )}
-      />
+        </View>
 
-      {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 30 }} color={colors.accent} />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : (
-        <FlatList
-          data={[0]}
-          keyExtractor={() => "pulse-body"}
-          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
-          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
-          ListEmptyComponent={<Text style={styles.empty}>Nothing here yet.</Text>}
-          renderItem={() => (
-            <View>
-              {renderGroup("Today", today)}
-              {renderGroup("Earlier", earlier)}
-              {filtered.length === 0 ? <Text style={styles.empty}>Nothing here yet.</Text> : null}
+        <WeekCard week={week} unread={unread} />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+          {FILTERS.map(([id, label]) => {
+            const on = filter === id;
+            const c = unreadIn(id);
+            return (
+              <Pressable
+                key={id}
+                onPress={() => setFilter(id)}
+                style={[styles.filter, { backgroundColor: on ? stream.ink : "transparent", borderColor: on ? stream.ink : stream.raisedBorder }]}
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${label}${c ? `, ${c} unread` : ""}`}
+              >
+                <Text style={[styles.filterText, { color: on ? stream.bg : stream.inkSoft }]}>{label}</Text>
+                {c > 0 ? <Text style={[styles.count, { backgroundColor: on ? stream.bg : stream.lime, color: on ? stream.lime : stream.onLime }]}>{c}</Text> : null}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {notifications === null ? (
+          <ActivityIndicator style={{ marginTop: 40 }} color={stream.lime} />
+        ) : groups.length === 0 ? (
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={stream.lime} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M2.5 12h4l2.5-6 4.5 12 2.5-6h5.5" />
+              </Svg>
             </View>
-          )}
-        />
-      )}
-    </ScreenGradient>
+            <Text style={styles.emptyTitle}>Quiet on this frequency</Text>
+            <Text style={styles.emptySub}>When someone banters back, you'll feel it here.</Text>
+          </View>
+        ) : (
+          groups.map((g) => (
+            <View key={g.label} style={{ paddingTop: 14 }}>
+              <View style={styles.groupHead}>
+                <Text style={styles.groupLabel}>{g.label.toUpperCase()}</Text>
+                <View style={styles.groupRule} />
+              </View>
+              <View style={styles.cards}>
+                {g.items.map((item) => (
+                  <PulseCard key={item.key} item={item} crewUi={crewUi[item.key]} sentReply={sent[item.key]} {...stable} />
+                ))}
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 },
-  title: { fontFamily: fonts.display, fontSize: 28, color: colors.ink },
-  markAllRead: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.accent },
-  filtersList: { flexGrow: 0, flexShrink: 0 },
-  filters: { paddingHorizontal: 16, paddingBottom: 16, gap: 6 },
-  chip: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.hairline, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  chipActive: { backgroundColor: colors.ink },
-  chipText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.ink },
-  chipTextActive: { color: "#fff" },
-  section: { paddingHorizontal: 16, gap: 8 },
-  sectionLabel: { fontFamily: fonts.display, fontSize: 14, color: colors.inkMuted, textTransform: "uppercase" },
-  cardList: { gap: 8 },
-  card: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    backgroundColor: colors.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: 12,
-    padding: 12,
-  },
-  iconTile: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  rowText: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.ink },
-  rowTime: { fontFamily: fonts.body, fontSize: 11, color: colors.inkMuted },
-  actions: { flexDirection: "row", gap: 8 },
-  letIn: { backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
-  letInText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff" },
-  skip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.hairline, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
-  skipText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
-  error: { fontFamily: fonts.body, color: colors.cheer, textAlign: "center", marginTop: 30 },
-  empty: { fontFamily: fonts.body, color: colors.inkMuted, textAlign: "center", marginTop: 30 },
+  container: { flex: 1, backgroundColor: stream.bg },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 48, marginTop: 48, paddingHorizontal: 16 },
+  title: { fontFamily: fonts.display, fontSize: 30, letterSpacing: -1.2, color: stream.ink },
+  markAll: { flexDirection: "row", alignItems: "center", gap: 6, height: 34, paddingHorizontal: 12, borderWidth: 1, borderRadius: 12 },
+  markAllText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
+  week: { marginTop: 14, marginHorizontal: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, borderRadius: 24, backgroundColor: stream.sheet, borderWidth: 1, borderColor: "#1F1F24", gap: 10, overflow: "hidden" },
+  weekTop: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 10 },
+  eyebrow: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: stream.inkMuted },
+  headline: { fontFamily: fonts.display, fontSize: 26, letterSpacing: -0.8, color: stream.ink },
+  stats: { flexDirection: "row", gap: 14 },
+  statValue: { fontFamily: fonts.display, fontSize: 18 },
+  statLabel: { fontFamily: fonts.body, fontSize: 11, color: stream.inkMuted },
+  days: { flexDirection: "row", justifyContent: "space-between" },
+  day: { fontFamily: fonts.bodySemibold, fontSize: 10.5, letterSpacing: 0.4, color: "#6F6D77" },
+  filters: { gap: 6, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  filter: { flexDirection: "row", alignItems: "center", gap: 7, height: 34, paddingLeft: 14, paddingRight: 12, borderWidth: 1, borderRadius: 999 },
+  filterText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
+  count: { minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, overflow: "hidden", fontFamily: fonts.bodyBold, fontSize: 10.5, lineHeight: 18, textAlign: "center" },
+  groupHead: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
+  groupLabel: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 1.6, color: stream.inkMuted },
+  groupRule: { flex: 1, height: 1, backgroundColor: "#1C1C21" },
+  cards: { gap: 6, paddingHorizontal: 10 },
+  empty: { alignItems: "center", gap: 8, paddingVertical: 56, paddingHorizontal: 24 },
+  emptyIcon: { width: 56, height: 56, borderRadius: 20, backgroundColor: stream.sheet, borderWidth: 1, borderColor: stream.cardBorder, alignItems: "center", justifyContent: "center" },
+  emptyTitle: { fontFamily: fonts.display, fontSize: 17, color: stream.ink },
+  emptySub: { fontFamily: fonts.body, fontSize: 13.5, color: stream.inkMuted, textAlign: "center" },
 });
