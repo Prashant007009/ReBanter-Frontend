@@ -105,6 +105,15 @@ export interface PublicUserProfile {
   stats: { drops: number; crew: number };
   relationship: Relationship;
   canViewDrops: boolean;
+  vibe: string | null;
+  /** Where they last dropped from (that you can see). */
+  place: string | null;
+  /** Online / last seen: only shared between crew. */
+  presence: { online: boolean; lastSeenAt: string | null } | null;
+  mutuals: { count: number; people: UserSummary[] };
+  pins: { id: string; emoji: string; label: string; color: string }[];
+  /** Your switches for this person: 🔔 drop alerts, mute, restrict, block. */
+  viewer: { alerts: boolean; muted: boolean; restricted: boolean; blocked: boolean };
 }
 
 export interface Room {
@@ -151,7 +160,7 @@ export interface Notification {
   recipientId: string;
   actorId: string | null;
   actor: UserSummary | null;
-  type: "CHEER" | "REPLY" | "CREW_JOINED" | "CREW_REQUEST" | "MENTION";
+  type: "CHEER" | "REPLY" | "CREW_JOINED" | "CREW_REQUEST" | "MENTION" | "DROP_ALERT";
   dropId: string | null;
   read: boolean;
   createdAt: string;

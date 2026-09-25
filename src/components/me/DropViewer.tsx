@@ -17,8 +17,9 @@ export function ZapGlyph({ size = 18, color }: { size?: number; color: string })
 }
 
 /**
- * Your drop, full screen: step through your drops, spark it (a cheer), share,
- * pin it to the top of your profile, or delete it (tap twice to confirm).
+ * A drop, full screen: step through a profile's drops, spark it (a cheer) and
+ * share it. On your own profile you can also pin it to the top or delete it
+ * (tap twice to confirm); on someone else's you can open it to banter.
  */
 export function DropViewer({
   drops,
@@ -29,6 +30,7 @@ export function DropViewer({
   onShare,
   onTogglePin,
   onDelete,
+  onOpen,
 }: {
   drops: (StreamDrop & { pinnedAt?: string | null })[];
   index: number | null;
@@ -36,8 +38,10 @@ export function DropViewer({
   onIndex: (i: number) => void;
   onSpark: (drop: StreamDrop) => void;
   onShare: (drop: StreamDrop) => void;
-  onTogglePin: (drop: StreamDrop & { pinnedAt?: string | null }) => void;
-  onDelete: (drop: StreamDrop) => void;
+  onTogglePin?: (drop: StreamDrop & { pinnedAt?: string | null }) => void;
+  onDelete?: (drop: StreamDrop) => void;
+  /** Open the full drop (comments and all). */
+  onOpen?: (drop: StreamDrop) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [photo, setPhoto] = useState(0);
@@ -80,13 +84,17 @@ export function DropViewer({
           <Text style={styles.title}>
             Drop {index + 1} of {drops.length}
           </Text>
-          <Pressable
-            onPress={() => onTogglePin(drop)}
-            style={[styles.pin, drop.pinnedAt ? { backgroundColor: stream.lime, borderColor: stream.lime } : null]}
-            accessibilityLabel={drop.pinnedAt ? "Unpin drop" : "Pin to top"}
-          >
-            <Text style={[styles.pinText, drop.pinnedAt ? { color: stream.onLime } : null]}>{drop.pinnedAt ? "📌 Pinned" : "Pin to top"}</Text>
-          </Pressable>
+          {onTogglePin ? (
+            <Pressable
+              onPress={() => onTogglePin(drop)}
+              style={[styles.pin, drop.pinnedAt ? { backgroundColor: stream.lime, borderColor: stream.lime } : null]}
+              accessibilityLabel={drop.pinnedAt ? "Unpin drop" : "Pin to top"}
+            >
+              <Text style={[styles.pinText, drop.pinnedAt ? { color: stream.onLime } : null]}>{drop.pinnedAt ? "📌 Pinned" : "Pin to top"}</Text>
+            </Pressable>
+          ) : drop.pinnedAt ? (
+            <Text style={[styles.pinText, { color: stream.lime }]}>📌 Pinned</Text>
+          ) : null}
         </View>
 
         <Pressable style={[styles.media, { backgroundColor: drop.kind === "take" ? theme.bg : stream.card }]} onPress={onMediaPress}>
@@ -126,18 +134,25 @@ export function DropViewer({
             <Animated.View style={{ transform: [{ scale: beat }] }}>
               <ZapGlyph color={drop.likedByMe ? stream.onLime : stream.ink} />
             </Animated.View>
-            <Text style={[styles.sparkText, { color: drop.likedByMe ? stream.onLime : stream.ink }]}>{drop.counts.likes}</Text>
+            {drop.countsHidden ? null : <Text style={[styles.sparkText, { color: drop.likedByMe ? stream.onLime : stream.ink }]}>{drop.counts.likes}</Text>}
           </Pressable>
           <Pressable style={styles.share} onPress={() => onShare(drop)}>
             <Text style={styles.shareText}>Share</Text>
           </Pressable>
           <View style={{ flex: 1 }} />
-          <Pressable
-            onPress={() => (confirmDelete ? onDelete(drop) : setConfirmDelete(true))}
-            style={[styles.delete, confirmDelete && { backgroundColor: "rgba(255,107,107,0.14)", borderColor: stream.redSoft }]}
-          >
-            <Text style={styles.deleteText}>{confirmDelete ? "Tap to confirm" : "Delete"}</Text>
-          </Pressable>
+          {onOpen ? (
+            <Pressable style={styles.share} onPress={() => onOpen(drop)} accessibilityLabel="Open drop">
+              <Text style={styles.shareText}>{drop.commentsOff ? "Open" : "💬 Banter"}</Text>
+            </Pressable>
+          ) : null}
+          {onDelete ? (
+            <Pressable
+              onPress={() => (confirmDelete ? onDelete(drop) : setConfirmDelete(true))}
+              style={[styles.delete, confirmDelete && { backgroundColor: "rgba(255,107,107,0.14)", borderColor: stream.redSoft }]}
+            >
+              <Text style={styles.deleteText}>{confirmDelete ? "Tap to confirm" : "Delete"}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </Modal>

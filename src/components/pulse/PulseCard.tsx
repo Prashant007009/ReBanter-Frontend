@@ -29,6 +29,7 @@ const TYPE = {
   CREW_REQUEST: { badge: "#C8F169", tint: "rgba(200,241,105,0.06)" },
   CREW_JOINED: { badge: "#C8F169", tint: "rgba(200,241,105,0.06)" },
   MENTION: { badge: "#FFB020", tint: "rgba(255,176,32,0.07)" },
+  DROP_ALERT: { badge: "#1FB7A6", tint: "rgba(31,183,166,0.07)" },
 } as const;
 
 const QUICK = ["😂", "🔥", "haha facts"];
@@ -55,6 +56,8 @@ function verb(item: PulseItem) {
       return "wants to join your crew";
     case "CREW_JOINED":
       return "is now in your crew";
+    case "DROP_ALERT":
+      return item.drop?.kind === "take" ? "dropped a new take" : item.drop?.kind === "poll" ? "started a poll" : "just dropped";
   }
 }
 
@@ -73,6 +76,10 @@ function Badge({ type }: { type: PulseItem["type"] }) {
         </Svg>
       ) : type === "MENTION" ? (
         <Text style={styles.at}>@</Text>
+      ) : type === "DROP_ALERT" ? (
+        <Svg width={11} height={11} viewBox="0 0 24 24" fill={ink}>
+          <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" />
+        </Svg>
       ) : (
         <Svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth={3.4} strokeLinecap="round">
           <Path d="M12 5v14M5 12h14" />

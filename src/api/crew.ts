@@ -16,3 +16,13 @@ export function acceptCrewRequest(userId: string) {
 export function skipCrewRequest(userId: string) {
   return apiFetch(`/api/crew/requests/${userId}/skip`, { method: "POST" });
 }
+
+/** Take back a crew request you sent. */
+export function cancelCrewRequest(userId: string) {
+  return apiFetch(`/api/crew/requests/${userId}`, { method: "DELETE" });
+}
+
+/** Leave someone's crew. */
+export function leaveCrew(userId: string) {
+  return apiFetch(`/api/crew/${userId}`, { method: "DELETE" });
+}
