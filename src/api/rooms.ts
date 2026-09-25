@@ -11,7 +11,11 @@ export interface Loop {
 }
 
 export function getRooms() {
-  return apiFetch<{ items: Room[] }>("/api/rooms");
+  return apiFetch<{ items: Room[]; roamingNow: number }>("/api/rooms");
+}
+
+export function joinRoom(roomId: string, join: boolean) {
+  return apiFetch<Room>(`/api/rooms/${roomId}/join`, { method: join ? "POST" : "DELETE" });
 }
 
 export function getRoomLoops(roomId: string) {

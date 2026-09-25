@@ -11,7 +11,7 @@ import type { RootStackParamList } from "@/navigation/types";
 type Props = NativeStackScreenProps<RootStackParamList, "LoopsPlayer">;
 
 export function LoopsPlayerScreen({ route }: Props) {
-  const { roomId } = route.params;
+  const { roomId, startLoopId } = route.params;
   const [loops, setLoops] = useState<Loop[]>([]);
   const [index, setIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,12 +23,14 @@ export function LoopsPlayerScreen({ route }: Props) {
     try {
       const res = await getRoomLoops(roomId);
       setLoops(res.items);
+      // Opened from a Roam tile: start on that loop.
+      if (startLoopId) setIndex(Math.max(0, res.items.findIndex((l) => l.id === startLoopId)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load this room's loops");
     } finally {
       setIsLoading(false);
     }
-  }, [roomId]);
+  }, [roomId, startLoopId]);
 
   useEffect(() => {
     load();

@@ -1,9 +1,10 @@
 import { apiFetch } from "./client";
-import type { UserSummary } from "./types";
+import type { PersonResult, Room, TagStat } from "./types";
 
 export interface SearchResults {
-  users: UserSummary[];
-  rooms: { id: string; title: string; status: string; participantCount: number }[];
+  users: PersonResult[];
+  rooms: Room[];
+  tags: TagStat[];
 }
 
 export function search(query: string) {

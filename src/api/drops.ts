@@ -1,8 +1,8 @@
 import { apiFetch } from "./client";
 import type { Reply, StreamDrop, StreamTab } from "./types";
 
-export function getFeed(tab: StreamTab = "forYou", cursor?: string) {
-  const qs = new URLSearchParams({ tab, ...(cursor ? { cursor } : {}) });
+export function getFeed(tab: StreamTab = "forYou", cursor?: string, tag?: string) {
+  const qs = new URLSearchParams({ tab, ...(cursor ? { cursor } : {}), ...(tag ? { tag: tag.replace(/^#/, "") } : {}) });
   return apiFetch<{ items: StreamDrop[]; nextCursor: string | null }>(`/api/drops?${qs}`);
 }
 

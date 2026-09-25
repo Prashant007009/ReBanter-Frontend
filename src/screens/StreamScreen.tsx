@@ -1,23 +1,18 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { setStatusBarStyle } from "expo-status-bar";
-import * as Clipboard from "expo-clipboard";
 import { stream, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
-import { CommentsModal } from "@/components/CommentsModal";
-import { StreamPost, type PostActions } from "@/components/stream/StreamPost";
+import { StreamPost } from "@/components/stream/StreamPost";
+import { OpenMenuContext, PostCell, usePostActions } from "@/components/stream/usePostActions";
 import { MomentRing } from "@/components/stream/MomentRing";
 import { MomentViewer } from "@/components/stream/MomentViewer";
-import { ShareSheet } from "@/components/stream/ShareSheet";
-import { useToast } from "@/components/stream/Toast";
-import { dropLink } from "@/components/stream/format";
 import { ChatGlyph, CheckGlyph, PlusGlyph, SearchGlyph } from "@/components/stream/StreamIcons";
-import { getFeed, hideDrop, reactToDrop, setStance, unreactToDrop, votePoll } from "@/api/drops";
+import { getFeed } from "@/api/drops";
 import { getMoments } from "@/api/moments";
 import { getUnreadBanterCount } from "@/api/banters";
-import { acceptCrewRequest, sendCrewRequest } from "@/api/crew";
 import { useSession } from "@/session/SessionContext";
 import { realtimeSocket } from "@/realtime/socket";
 import type { MomentGroup, StreamDrop, StreamTab } from "@/api/types";
@@ -29,24 +24,9 @@ const TABS: [StreamTab, string][] = [
   ["takes", "Hot takes 🔥"],
 ];
 
-// Lift the card whose "…" menu is open above the cards below it (cells are
-// siblings, so zIndex has to be set on the cell itself). Context keeps the
-// renderer a stable component so cells never remount.
-const OpenMenuContext = createContext<string | null>(null);
-
-function PostCell({ item, style, children, ...rest }: { item: StreamDrop; style?: StyleProp<ViewStyle>; children?: ReactNode }) {
-  const openMenu = useContext(OpenMenuContext);
-  return (
-    <View {...rest} style={[style, item.id === openMenu && { zIndex: 20, elevation: 20 }]}>
-      {children}
-    </View>
-  );
-}
-
 export function StreamScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useSession();
-  const toast = useToast();
   const [tab, setTab] = useState<StreamTab>("forYou");
   const [drops, setDrops] = useState<StreamDrop[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -56,10 +36,6 @@ export function StreamScreen() {
   const [error, setError] = useState<string | null>(null);
   const [moments, setMoments] = useState<MomentGroup[]>([]);
   const [viewerGroup, setViewerGroup] = useState<number | null>(null);
-  const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [commentsFor, setCommentsFor] = useState<StreamDrop | null>(null);
-  const [shareFor, setShareFor] = useState<StreamDrop | null>(null);
-  const [followedNow, setFollowedNow] = useState<Record<string, boolean>>({});
   const [unread, setUnread] = useState(0);
   const loadingMoreRef = useRef(false);
   const tabRef = useRef(tab);
@@ -146,128 +122,18 @@ export function StreamScreen() {
     loadSide();
   }
 
-  const patch = useCallback((id: string, fn: (d: StreamDrop) => StreamDrop) => {
-    setDrops((prev) => prev.map((d) => (d.id === id ? fn(d) : d)));
-  }, []);
-  const replace = useCallback((updated: StreamDrop) => patch(updated.id, () => updated), [patch]);
-
   const ringByAuthor = useMemo(() => {
     const map = new Map<string, { frames: number; seen: boolean; index: number }>();
     moments.forEach((g, index) => map.set(g.author.id, { frames: g.frames.length, seen: g.allSeen, index }));
     return map;
   }, [moments]);
 
-  // Stable handlers so memoised cards don't re-render on every keystroke/scroll.
-  const actionsRef = useRef<PostActions>(null as unknown as PostActions);
-  actionsRef.current = {
-    onLike(drop, force) {
-      if (force && drop.likedByMe) return;
-      const liked = !drop.likedByMe;
-      patch(drop.id, (d) => ({ ...d, likedByMe: liked, counts: { ...d.counts, likes: d.counts.likes + (liked ? 1 : -1) } }));
-      (liked ? reactToDrop(drop.id, "cheer") : unreactToDrop(drop.id, "cheer")).catch(() =>
-        patch(drop.id, (d) => ({ ...d, likedByMe: !liked, counts: { ...d.counts, likes: d.counts.likes + (liked ? -1 : 1) } }))
-      );
-    },
-    onSave(drop) {
-      const saved = !drop.savedByMe;
-      setMenuFor(null);
-      patch(drop.id, (d) => ({ ...d, savedByMe: saved }));
-      toast(saved ? "Saved to your collection" : "Removed from saved");
-      (saved ? reactToDrop(drop.id, "save") : unreactToDrop(drop.id, "save")).catch(() => patch(drop.id, (d) => ({ ...d, savedByMe: !saved })));
-    },
-    onComments(drop) {
-      setMenuFor(null);
-      setCommentsFor(drop);
-    },
-    onShare(drop) {
-      setMenuFor(null);
-      setShareFor(drop);
-    },
-    async onFollow(drop) {
-      const accept = drop.relationship === "incoming";
-      setFollowedNow((f) => ({ ...f, [drop.author.id]: true }));
-      const next = accept ? "crew" : "requested";
-      setDrops((prev) => prev.map((d) => (d.author.id === drop.author.id ? { ...d, relationship: next } : d)));
-      try {
-        if (accept) await acceptCrewRequest(drop.author.id);
-        else await sendCrewRequest(drop.author.id);
-        toast(accept ? `You and ${drop.author.handle} are crew now` : `Crew request sent to ${drop.author.handle}`);
-      } catch (err) {
-        setDrops((prev) => prev.map((d) => (d.author.id === drop.author.id ? { ...d, relationship: drop.relationship } : d)));
-        toast(err instanceof Error ? err.message : "Couldn't send that request");
-      }
-    },
-    async onVote(drop, optionId) {
-      patch(drop.id, (d) => ({
-        ...d,
-        poll: d.poll && {
-          ...d.poll,
-          myVote: optionId,
-          totalVotes: d.poll.totalVotes + 1,
-          options: d.poll.options.map((o) => (o.id === optionId ? { ...o, votes: o.votes + 1 } : o)),
-        },
-      }));
-      try {
-        replace(await votePoll(drop.id, optionId));
-      } catch {
-        patch(drop.id, () => drop);
-      }
-    },
-    async onStance(drop, stance) {
-      const next = drop.take?.myStance === stance ? null : stance;
-      patch(drop.id, (d) => {
-        if (!d.take) return d;
-        const t = { ...d.take };
-        if (t.myStance) t[t.myStance] -= 1;
-        if (next) t[next] += 1;
-        return { ...d, take: { ...t, myStance: next } };
-      });
-      try {
-        replace(await setStance(drop.id, next));
-      } catch {
-        patch(drop.id, () => drop);
-      }
-    },
-    async onCopyLink(drop) {
-      setMenuFor(null);
-      await Clipboard.setStringAsync(dropLink(drop.id)).catch(() => {});
-      toast("Link copied");
-    },
-    async onHide(drop, report) {
-      setMenuFor(null);
-      setDrops((prev) => prev.filter((d) => d.id !== drop.id));
-      toast(report ? "Reported — thanks for flagging" : "Got it — less like this");
-      hideDrop(drop.id, report).catch(() => {});
-    },
-    onOpenMoment(authorId) {
+  const { actions, menuFor, setMenuFor, followedNow, sheets } = usePostActions(setDrops, {
+    onOpenMoment: (authorId) => {
       const ring = ringByAuthor.get(authorId);
       if (ring) setViewerGroup(ring.index);
     },
-    onOpenProfile(handle) {
-      if (handle === user?.handle) navigation.navigate("Tabs", { screen: "Me" });
-      else navigation.navigate("UserProfile", { handle });
-    },
-    onToggleMenu(dropId) {
-      setMenuFor(dropId);
-    },
-  };
-  const actions = useMemo<PostActions>(
-    () => ({
-      onLike: (d, f) => actionsRef.current.onLike(d, f),
-      onSave: (d) => actionsRef.current.onSave(d),
-      onComments: (d) => actionsRef.current.onComments(d),
-      onShare: (d) => actionsRef.current.onShare(d),
-      onFollow: (d) => actionsRef.current.onFollow(d),
-      onVote: (d, o) => actionsRef.current.onVote(d, o),
-      onStance: (d, s) => actionsRef.current.onStance(d, s),
-      onCopyLink: (d) => actionsRef.current.onCopyLink(d),
-      onHide: (d, r) => actionsRef.current.onHide(d, r),
-      onOpenMoment: (a) => actionsRef.current.onOpenMoment(a),
-      onOpenProfile: (h) => actionsRef.current.onOpenProfile(h),
-      onToggleMenu: (id) => actionsRef.current.onToggleMenu(id),
-    }),
-    []
-  );
+  });
 
   const markFrameSeen = useCallback((g: number, f: number) => {
     setMoments((prev) =>
@@ -405,17 +271,7 @@ export function StreamScreen() {
         onClose={() => setViewerGroup(null)}
         onFrameSeen={markFrameSeen}
       />
-      <CommentsModal
-        visible={!!commentsFor}
-        dropId={commentsFor?.id ?? ""}
-        onClose={() => setCommentsFor(null)}
-        onCommented={() => commentsFor && patch(commentsFor.id, (d) => ({ ...d, counts: { ...d.counts, replies: d.counts.replies + 1 } }))}
-      />
-      <ShareSheet
-        drop={shareFor}
-        onClose={() => setShareFor(null)}
-        onShared={(d) => patch(d.id, (x) => ({ ...x, counts: { ...x.counts, shares: x.counts.shares + 1 } }))}
-      />
+      {sheets}
     </View>
   );
 }

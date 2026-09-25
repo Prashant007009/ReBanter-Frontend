@@ -95,6 +95,37 @@ export interface Room {
   status: "LIVE" | "SCHEDULED" | "ENDED";
   participantCount: number;
   host: UserSummary;
+  /** Category shown on Roam cards ("Design", "Music", …). */
+  tag: string | null;
+  /** A few recent joiners, for the face stack. */
+  faces: UserSummary[];
+  joinedByMe: boolean;
+}
+
+export interface TagStat {
+  tag: string;
+  posts: number;
+  takes: number;
+}
+
+export interface PersonResult extends UserSummary {
+  isVerified: boolean;
+  relationship: Relationship;
+  /** One line of social context: "Followed by maya + 3 more", "In your crew", a bio snippet… */
+  context: string | null;
+}
+
+export interface ExploreTile {
+  type: "photo" | "carousel" | "take" | "loop";
+  id: string;
+  dropId: string | null;
+  roomId: string | null;
+  imageUrl: string | null;
+  text: string | null;
+  caption: string | null;
+  author: string;
+  likes: number;
+  durationSec: number | null;
 }
 
 export interface Notification {

@@ -10,6 +10,8 @@ import { BanterThreadScreen } from "@/screens/BanterThreadScreen";
 import { NewDropScreen } from "@/screens/NewDropScreen";
 import { NewMomentScreen } from "@/screens/NewMomentScreen";
 import { NewTakeScreen } from "@/screens/NewTakeScreen";
+import { TagScreen } from "@/screens/TagScreen";
+import { DropScreen } from "@/screens/DropScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { EditProfileScreen } from "@/screens/EditProfileScreen";
 import { UserProfileScreen } from "@/screens/UserProfileScreen";
@@ -44,6 +46,8 @@ function AppNavigator() {
       <Stack.Screen name="NewDrop" component={NewDropScreen} />
       <Stack.Screen name="NewMoment" component={NewMomentScreen} />
       <Stack.Screen name="NewTake" component={NewTakeScreen} />
+      <Stack.Screen name="Tag" component={TagScreen} />
+      <Stack.Screen name="Drop" component={DropScreen} />
     </Stack.Navigator>
   );
 }

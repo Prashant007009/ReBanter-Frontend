@@ -14,12 +14,14 @@ export type AuthStackParamList = {
 
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
-  LoopsPlayer: { roomId: string };
+  LoopsPlayer: { roomId: string; startLoopId?: string };
   Banters: undefined;
   BanterThread: { banterId: string; handle: string };
   NewDrop: undefined;
   NewMoment: undefined;
   NewTake: { mode: "take" | "poll" };
+  Tag: { tag: string };
+  Drop: { dropId: string };
   Settings: undefined;
   EditProfile: undefined;
   UserProfile: { handle: string };
