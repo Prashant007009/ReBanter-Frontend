@@ -6,12 +6,14 @@ import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { ZapIcon, ReplyIcon, RepostIcon, MoreHorizontalIcon, VideoIcon, MusicNoteIcon } from "@/assets/icons";
 import { getRoomLoops, tuneIn, type Loop } from "@/api/rooms";
+import { getLoop } from "@/api/compose";
+import { LoopVideo } from "@/components/loops/LoopVideo";
 import type { RootStackParamList } from "@/navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "LoopsPlayer">;
 
 export function LoopsPlayerScreen({ route }: Props) {
-  const { roomId, startLoopId } = route.params;
+  const { roomId, loopId, startLoopId } = route.params;
   const [loops, setLoops] = useState<Loop[]>([]);
   const [index, setIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +23,8 @@ export function LoopsPlayerScreen({ route }: Props) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await getRoomLoops(roomId);
+      // A standalone loop (posted from the composer) or a room's loops.
+      const res = loopId ? { items: [await getLoop(loopId)] } : roomId ? await getRoomLoops(roomId) : { items: [] };
       setLoops(res.items);
       // Opened from a Roam tile: start on that loop.
       if (startLoopId) setIndex(Math.max(0, res.items.findIndex((l) => l.id === startLoopId)));
@@ -30,13 +33,14 @@ export function LoopsPlayerScreen({ route }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [roomId, startLoopId]);
+  }, [roomId, loopId, startLoopId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   async function onTuneIn() {
+    if (!roomId) return;
     setTuned(true);
     try {
       await tuneIn(roomId);
@@ -66,7 +70,9 @@ export function LoopsPlayerScreen({ route }: Props) {
 
   return (
     <View style={styles.container}>
-      {cover ? (
+      {cover?.kind === "video" ? (
+        <LoopVideo key={loop.id} url={cover.url} rate={loop.playbackRate ?? 1} trimStart={loop.trimStartSec} trimEnd={loop.trimEndSec} />
+      ) : cover ? (
         <Image source={{ uri: cover.url }} style={StyleSheet.absoluteFill} />
       ) : (
         <LinearGradient colors={["#2B2118", "#584232", "#1A1510"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />

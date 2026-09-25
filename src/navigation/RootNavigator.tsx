@@ -7,9 +7,7 @@ import { AuthNavigator } from "./AuthNavigator";
 import { LoopsPlayerScreen } from "@/screens/LoopsPlayerScreen";
 import { BantersScreen } from "@/screens/BantersScreen";
 import { BanterThreadScreen } from "@/screens/BanterThreadScreen";
-import { NewDropScreen } from "@/screens/NewDropScreen";
-import { NewMomentScreen } from "@/screens/NewMomentScreen";
-import { NewTakeScreen } from "@/screens/NewTakeScreen";
+import { ComposerScreen } from "@/screens/ComposerScreen";
 import { TagScreen } from "@/screens/TagScreen";
 import { DropScreen } from "@/screens/DropScreen";
 import { CollectionScreen } from "@/screens/CollectionScreen";
@@ -44,9 +42,9 @@ function AppNavigator() {
           a plain push is what we're testing against here since there's no
           emulator in this environment. Fine to revisit once tested on a
           real device/simulator. */}
-      <Stack.Screen name="NewDrop" component={NewDropScreen} />
-      <Stack.Screen name="NewMoment" component={NewMomentScreen} />
-      <Stack.Screen name="NewTake" component={NewTakeScreen} />
+      <Stack.Screen name="NewDrop" component={ComposerScreen} />
+      <Stack.Screen name="NewMoment" component={ComposerScreen} />
+      <Stack.Screen name="NewTake" component={ComposerScreen} />
       <Stack.Screen name="Tag" component={TagScreen} />
       <Stack.Screen name="Drop" component={DropScreen} />
       <Stack.Screen name="Collection" component={CollectionScreen} />

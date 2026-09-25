@@ -37,7 +37,8 @@
           "savePhotosPermission": "ReBanter saves your profile card to your photos when you ask it to.",
           "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }

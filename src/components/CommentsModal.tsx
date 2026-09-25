@@ -100,11 +100,14 @@ export function CommentsModal({
   dropId,
   onClose,
   onCommented,
+  commentsOff = false,
 }: {
   visible: boolean;
   dropId: string;
   onClose: () => void;
   onCommented: () => void;
+  /** The author turned banter off: existing comments stay readable, no new ones. */
+  commentsOff?: boolean;
 }) {
   const { user } = useSession();
   const [comments, setComments] = useState<Reply[]>([]);
@@ -261,6 +264,11 @@ export function CommentsModal({
           </View>
         ) : null}
 
+        {commentsOff ? (
+          <Text style={styles.offNote}>🔇 Banter is turned off for this drop</Text>
+        ) : null}
+        {commentsOff ? null : (
+        <>
         <View style={styles.quickRow}>
           {QUICK_EMOJI.map((e) => (
             <Pressable key={e} style={({ pressed }) => [styles.quickButton, pressed && { backgroundColor: stream.raised }]} onPress={() => setDraft((d) => d + e)}>
@@ -294,6 +302,8 @@ export function CommentsModal({
             </Pressable>
           </View>
         </View>
+        </>
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -328,6 +338,7 @@ const styles = StyleSheet.create({
   replyingChipRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 16, marginBottom: 6, backgroundColor: stream.raised, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9 },
   replyingChipText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: stream.inkSoft },
   replyingChipCancel: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: stream.lime },
+  offNote: { textAlign: "center", paddingTop: 14, paddingBottom: 30, borderTopWidth: 1, borderTopColor: "#1F1F24", fontFamily: fonts.bodyMedium, fontSize: 13.5, color: stream.inkMuted },
   quickRow: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: "#1F1F24" },
   quickButton: { flex: 1, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   quickEmoji: { fontSize: 22 },

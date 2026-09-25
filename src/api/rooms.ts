@@ -8,6 +8,11 @@ export interface Loop {
   durationSec: number;
   audioLabel: string | null;
   media: Media[];
+  // Playback settings from the composer (standalone loops).
+  playbackRate?: number;
+  trimStartSec?: number | null;
+  trimEndSec?: number | null;
+  effects?: string[];
 }
 
 export function getRooms() {

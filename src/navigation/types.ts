@@ -14,10 +14,17 @@ export type AuthStackParamList = {
 
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
-  LoopsPlayer: { roomId: string; startLoopId?: string };
+  /** A room's loops, or a single standalone loop by id. */
+  LoopsPlayer: { roomId?: string; loopId?: string; startLoopId?: string };
   Banters: undefined;
   BanterThread: { banterId: string; handle: string };
-  NewDrop: undefined;
+  /** The Drop composer, optionally opened on a mode or as a remix of a take / poll. */
+  NewDrop:
+    | {
+        mode?: "photo" | "loop" | "collage" | "moment" | "take" | "poll";
+        remix?: { kind: "take" | "poll"; body: string; options?: string[]; author: string };
+      }
+    | undefined;
   NewMoment: undefined;
   NewTake: { mode: "take" | "poll" };
   Tag: { tag: string };

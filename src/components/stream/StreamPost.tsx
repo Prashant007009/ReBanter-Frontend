@@ -31,6 +31,23 @@ import {
 } from "./StreamIcons";
 
 const DOUBLE_TAP_MS = 280;
+const ASPECT = { "1:1": 1, "4:5": 4 / 5, "16:9": 16 / 9 } as const;
+
+/** Readable ink (near-black or white) for a card colour. */
+function inkOn(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.55 ? "#0C0C0E" : "#FFFFFF";
+}
+
+function timeLeft(iso: string) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return null;
+  const h = Math.floor(ms / 3_600_000);
+  if (h >= 48) return `${Math.floor(h / 24)}d`;
+  if (h >= 1) return `${h}h`;
+  return `${Math.max(1, Math.floor(ms / 60_000))}m`;
+}
 
 export type PostActions = {
   onLike: (drop: StreamDrop, force?: boolean) => void;
@@ -45,6 +62,8 @@ export type PostActions = {
   onOpenMoment: (authorId: string) => void;
   onOpenProfile: (handle: string) => void;
   onToggleMenu: (dropId: string | null) => void;
+  /** Open the composer to remix this take / poll (only when the author allows it). */
+  onRemix?: (drop: StreamDrop) => void;
 };
 
 /** One Stream card (photo · carousel · hot take · poll), per the Rebanter Stream design. */
@@ -82,7 +101,16 @@ export const StreamPost = memo(function StreamPost({
   const followLabel =
     drop.relationship === "crew" ? "Following" : drop.relationship === "requested" ? "Requested" : drop.relationship === "incoming" ? "Accept" : "Follow";
   const followActive = drop.relationship === "none" || drop.relationship === "incoming";
-  const sub = [drop.location, dayjs(drop.createdAt).fromNow()].filter(Boolean).join(" · ");
+  const scheduled = !!drop.publishAt && new Date(drop.publishAt).getTime() > Date.now();
+  const audienceLabel = drop.audience === "crew" ? "👥 Crew" : drop.audience === "close" ? "💚 Close circle" : null;
+  const sub = [
+    drop.location,
+    drop.soundLabel ? `♪ ${drop.soundLabel}` : null,
+    audienceLabel,
+    scheduled ? `🕒 Scheduled · ${dayjs(drop.publishAt).format("ddd h:mm A")}` : dayjs(drop.createdAt).fromNow(),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const top = drop.topReply;
 
   return (
@@ -119,6 +147,9 @@ export const StreamPost = memo(function StreamPost({
           <PopIn style={styles.menu}>
             <MenuItem label={drop.savedByMe ? "Remove from saved" : "Save"} onPress={() => a.onSave(drop)} />
             <MenuItem label="Copy link" onPress={() => a.onCopyLink(drop)} />
+            {drop.allowRemix !== false && drop.relationship !== "self" && (drop.kind === "take" || drop.kind === "poll") && a.onRemix ? (
+              <MenuItem label="Remix" onPress={() => a.onRemix!(drop)} />
+            ) : null}
             <MenuItem label="Not interested" onPress={() => a.onHide(drop, false)} />
             <MenuItem label="Report" danger onPress={() => a.onHide(drop, true)} />
           </PopIn>
@@ -136,7 +167,7 @@ export const StreamPost = memo(function StreamPost({
         <Carousel drop={drop} onPress={onMediaPress} burstKey={burstKey} />
       ) : drop.media.length === 1 ? (
         <Pressable onPress={onMediaPress} style={styles.mediaFrame}>
-          <Photo uri={drop.media[0].url} />
+          <Photo uri={drop.media[0].url} fixedRatio={drop.aspect ? ASPECT[drop.aspect] : undefined} alt={drop.altText} />
           <HeartBurst burstKey={burstKey} />
         </Pressable>
       ) : null}
@@ -146,9 +177,13 @@ export const StreamPost = memo(function StreamPost({
           <Beat active={drop.likedByMe}>
             <HeartGlyph filled={drop.likedByMe} />
           </Beat>
-          <Text style={styles.actionCount}>{compact(drop.counts.likes)}</Text>
+          {drop.countsHidden ? null : <Text style={styles.actionCount}>{compact(drop.counts.likes)}</Text>}
         </Pressable>
-        <Pressable style={styles.action} onPress={() => a.onComments(drop)} accessibilityLabel="Comments">
+        <Pressable
+          style={[styles.action, drop.commentsOff && { opacity: 0.4 }]}
+          onPress={() => a.onComments(drop)}
+          accessibilityLabel={drop.commentsOff ? "Banter is off" : "Comments"}
+        >
           <ChatGlyph size={24} strokeWidth={1.9} />
           <Text style={styles.actionCount}>{compact(drop.counts.replies)}</Text>
         </Pressable>
@@ -196,7 +231,7 @@ function MenuItem({ label, onPress, danger }: { label: string; onPress: () => vo
 }
 
 /** Image at its natural aspect ratio (clamped between 4:5 and 16:9). */
-function Photo({ uri, fixedRatio }: { uri: string; fixedRatio?: number }) {
+function Photo({ uri, fixedRatio, alt }: { uri: string; fixedRatio?: number; alt?: string | null }) {
   const [ratio, setRatio] = useState(fixedRatio ?? 4 / 5);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -212,7 +247,14 @@ function Photo({ uri, fixedRatio }: { uri: string; fixedRatio?: number }) {
       <Text style={styles.photoFailedText}>Couldn't load this photo</Text>
     </View>
   ) : (
-    <Image source={{ uri }} style={[styles.photo, { aspectRatio: ratio }]} resizeMode="cover" onError={() => setFailed(true)} />
+    <Image
+      source={{ uri }}
+      style={[styles.photo, { aspectRatio: ratio }]}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+      accessibilityLabel={alt ?? undefined}
+      accessible={!!alt}
+    />
   );
 }
 
@@ -232,7 +274,11 @@ function Carousel({ drop, onPress, burstKey }: { drop: StreamDrop; onPress: () =
   };
 
   return (
-    <View style={[styles.mediaFrame, styles.carousel]} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
+    <View
+      style={[styles.mediaFrame, styles.carousel, drop.aspect ? { aspectRatio: ASPECT[drop.aspect] } : null]}
+      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      accessibilityLabel={drop.altText ?? undefined}
+    >
       {width > 0 ? (
         <ScrollView
           ref={ref}
@@ -275,7 +321,7 @@ function Carousel({ drop, onPress, burstKey }: { drop: StreamDrop; onPress: () =
 
 function TakeCard({ drop, onStance }: { drop: StreamDrop; onStance: (s: "facts" | "cap") => void }) {
   const t = drop.take!;
-  const theme = takeTheme(drop.id);
+  const theme = drop.takeColor ? { bg: drop.takeColor, ink: inkOn(drop.takeColor) } : takeTheme(drop.id);
   const total = Math.max(1, t.facts + t.cap);
   const pct = (t.facts / total) * 100;
   const button = (s: "facts" | "cap", label: string, n: number) => {
@@ -311,11 +357,16 @@ function TakeCard({ drop, onStance }: { drop: StreamDrop; onStance: (s: "facts" 
 
 function PollCard({ drop, onVote }: { drop: StreamDrop; onVote: (optionId: string) => void }) {
   const p = drop.poll!;
-  const voted = p.myVote !== null;
+  // A closed poll shows final results to everyone.
+  const voted = p.myVote !== null || !!p.closed;
   const lead = Math.max(...p.options.map((o) => o.votes));
+  const left = p.endsAt && !p.closed ? timeLeft(p.endsAt) : null;
   return (
     <View style={styles.poll}>
-      <Text style={styles.pollEyebrow}>POLL · {voted ? `${compact(p.totalVotes)} votes` : "tap to vote"}</Text>
+      <Text style={styles.pollEyebrow}>
+        POLL · {p.closed ? `FINAL · ${compact(p.totalVotes)} votes` : voted ? `${compact(p.totalVotes)} votes` : "tap to vote"}
+        {left ? ` · ${left} left` : ""}
+      </Text>
       <Text style={styles.pollQuestion}>{drop.body}</Text>
       {p.options.map((o) => {
         const pct = Math.round((o.votes / Math.max(1, p.totalVotes)) * 100);

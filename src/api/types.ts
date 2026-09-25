@@ -35,9 +35,27 @@ export interface StreamDrop extends Drop {
   counts: { reactions: number; likes: number; saves: number; shares: number; replies: number };
   likedByMe: boolean;
   savedByMe: boolean;
-  poll: { options: { id: string; label: string; votes: number }[]; totalVotes: number; myVote: string | null } | null;
+  poll: {
+    options: { id: string; label: string; votes: number }[];
+    totalVotes: number;
+    myVote: string | null;
+    endsAt?: string | null;
+    closed?: boolean;
+  } | null;
   take: { facts: number; cap: number; myStance: "facts" | "cap" | null } | null;
   topReply: { author: Omit<UserSummary, "id">; body: string; likeCount: number } | null;
+  // Composer options (Rebanter Drop).
+  aspect?: "1:1" | "4:5" | "16:9" | null;
+  takeColor?: string | null;
+  soundLabel?: string | null;
+  altText?: string | null;
+  /** Set while scheduled; only the author sees it before then. */
+  publishAt?: string | null;
+  audience?: "everyone" | "crew" | "close";
+  commentsOff?: boolean;
+  /** The author hid cheer counts (true for everyone but the author). */
+  countsHidden?: boolean;
+  allowRemix?: boolean;
 }
 
 export type StreamTab = "forYou" | "following" | "takes";

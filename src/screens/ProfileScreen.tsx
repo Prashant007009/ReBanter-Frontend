@@ -658,7 +658,7 @@ export function ProfileScreen() {
         ) : tab === "sounds" && sounds.length > 0 ? (
           <View style={{ paddingTop: 6 }}>
             {sounds.map((l) => (
-              <Pressable key={l.id} style={({ pressed }) => [styles.listRow, pressed && { backgroundColor: "#131316" }]} onPress={() => l.roomId && navigation.navigate("LoopsPlayer", { roomId: l.roomId, startLoopId: l.id })}>
+              <Pressable key={l.id} style={({ pressed }) => [styles.listRow, pressed && { backgroundColor: "#131316" }]} onPress={() => navigation.navigate("LoopsPlayer", l.roomId ? { roomId: l.roomId, startLoopId: l.id } : { loopId: l.id })}>
                 <View style={styles.listGlyph}>{l.coverUrl ? <Image source={{ uri: l.coverUrl }} style={StyleSheet.absoluteFill} /> : <Text style={{ fontSize: 20 }}>🎵</Text>}</View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.listTitle}>{l.audioLabel}</Text>
@@ -672,7 +672,7 @@ export function ProfileScreen() {
         ) : tab === "clips" && clips.length > 0 ? (
           <View style={styles.grid}>
             {clips.map((l) => (
-              <Pressable key={l.id} style={[styles.tile, { width: "32.8%", height: 200 }]} onPress={() => l.roomId && navigation.navigate("LoopsPlayer", { roomId: l.roomId, startLoopId: l.id })}>
+              <Pressable key={l.id} style={[styles.tile, { width: "32.8%", height: 200 }]} onPress={() => navigation.navigate("LoopsPlayer", l.roomId ? { roomId: l.roomId, startLoopId: l.id } : { loopId: l.id })}>
                 {l.coverUrl ? <Image source={{ uri: l.coverUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
                 <Text style={styles.clipDur}>▶ {Math.floor(l.durationSec / 60)}:{String(l.durationSec % 60).padStart(2, "0")}</Text>
               </Pressable>

@@ -13,6 +13,8 @@ const ICONS = { Stream: StreamTabGlyph, Roam: RoamTabGlyph, Pulse: PulseTabGlyph
 
 const CREATE_OPTIONS = [
   { key: "post", icon: "📸", label: "Post", sub: "Photos & carousels", primary: true },
+  { key: "loop", icon: "🎬", label: "Loop", sub: "Short videos" },
+  { key: "collage", icon: "🧩", label: "Collage", sub: "Many pics, one frame" },
   { key: "moment", icon: "⚡", label: "Moment", sub: "Gone in 24h" },
   { key: "take", icon: "🔥", label: "Hot take", sub: "Facts or cap?" },
   { key: "poll", icon: "📊", label: "Poll", sub: "Let them decide" },
@@ -20,7 +22,7 @@ const CREATE_OPTIONS = [
 
 /**
  * Floating dark tab bar from the Rebanter Stream design: Stream · Roam · (+) ·
- * Pulse · Me. The lime + opens a Create sheet (post, moment, hot take, poll)
+ * Pulse · Me. The lime + opens a Create sheet (post, loop, collage, moment, hot take, poll)
  * rather than being a tab. Pulse shows a red dot while notifications are unread.
  */
 export function AppTabBar({ state, navigation }: BottomTabBarProps) {
@@ -59,9 +61,8 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   function pickCreate(key: (typeof CREATE_OPTIONS)[number]["key"]) {
     setCreateOpen(false);
     const root = navigation.getParent() ?? navigation;
-    if (key === "post") root.navigate("NewDrop" as never);
-    else if (key === "moment") root.navigate("NewMoment" as never);
-    else root.navigate(...(["NewTake", { mode: key }] as never as [never]));
+    const mode = key === "post" ? "photo" : key;
+    root.navigate(...(["NewDrop", { mode }] as never as [never]));
   }
 
   const tab = (routeName: keyof typeof ICONS | "Me") => {

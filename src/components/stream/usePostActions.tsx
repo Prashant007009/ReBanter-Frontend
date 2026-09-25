@@ -129,6 +129,14 @@ export function usePostActions(
     onToggleMenu(dropId) {
       setMenuFor(dropId);
     },
+    onRemix(drop) {
+      setMenuFor(null);
+      if (drop.kind !== "take" && drop.kind !== "poll") return;
+      navigation.navigate("NewDrop", {
+        mode: drop.kind,
+        remix: { kind: drop.kind, body: drop.body ?? "", options: drop.poll?.options.map((o) => o.label), author: drop.author.handle },
+      });
+    },
   };
 
   const actions = useMemo<PostActions>(
@@ -145,6 +153,7 @@ export function usePostActions(
       onOpenMoment: (a) => impl.current.onOpenMoment(a),
       onOpenProfile: (h) => impl.current.onOpenProfile(h),
       onToggleMenu: (id) => impl.current.onToggleMenu(id),
+      onRemix: (d) => impl.current.onRemix!(d),
     }),
     []
   );
@@ -154,6 +163,7 @@ export function usePostActions(
       <CommentsModal
         visible={!!commentsFor}
         dropId={commentsFor?.id ?? ""}
+        commentsOff={!!commentsFor?.commentsOff}
         onClose={() => setCommentsFor(null)}
         onCommented={() => commentsFor && patch(commentsFor.id, (d) => ({ ...d, counts: { ...d.counts, replies: d.counts.replies + 1 } }))}
       />

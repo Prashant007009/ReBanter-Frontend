@@ -10,10 +10,31 @@ export function getDrop(dropId: string) {
   return apiFetch<StreamDrop>(`/api/drops/${dropId}`);
 }
 
-export type NewDrop =
-  | { kind: "post"; caption?: string; location?: string; media: { url: string; kind: "image" | "video" }[] }
-  | { kind: "take"; body: string; caption?: string }
-  | { kind: "poll"; body: string; options: string[]; caption?: string };
+/** Options shared by every kind of drop (Rebanter Drop composer). */
+export type DropOptions = {
+  soundLabel?: string;
+  altText?: string;
+  /** ISO time; scheduled drops stay hidden from everyone else until then. */
+  publishAt?: string;
+  audience?: "everyone" | "crew" | "close";
+  commentsOff?: boolean;
+  hideCounts?: boolean;
+  allowRemix?: boolean;
+};
+
+export type NewDrop = DropOptions &
+  (
+    | {
+        kind: "post";
+        caption?: string;
+        location?: string;
+        aspect?: "1:1" | "4:5" | "16:9";
+        alsoLoop?: boolean;
+        media: { url: string; kind: "image" | "video" }[];
+      }
+    | { kind: "take"; body: string; caption?: string; takeColor?: string }
+    | { kind: "poll"; body: string; options: string[]; caption?: string; durationHours?: 1 | 24 | 72 | 168 }
+  );
 
 export function createDrop(input: NewDrop) {
   return apiFetch<StreamDrop>("/api/drops", { method: "POST", body: JSON.stringify(input) });
