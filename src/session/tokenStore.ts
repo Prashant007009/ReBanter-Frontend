@@ -40,9 +40,11 @@ export async function getRefreshToken(): Promise<string | null> {
 }
 
 export async function setTokens(accessToken: string, refreshToken: string): Promise<void> {
-  await Promise.all([setItem(ACCESS_KEY, accessToken), setItem(REFRESH_KEY, refreshToken)]);
+  await setItem(ACCESS_KEY, accessToken);
+  await setItem(REFRESH_KEY, refreshToken);
 }
 
 export async function clearTokens(): Promise<void> {
-  await Promise.all([deleteItem(ACCESS_KEY), deleteItem(REFRESH_KEY)]);
+  await deleteItem(ACCESS_KEY);
+  await deleteItem(REFRESH_KEY);
 }
