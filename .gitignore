@@ -14,6 +14,7 @@ web-build/
 *.orig.*
 ios/
 android/
+coverage/
 
 # Local Claude Code project instructions — intentionally not shared via git
 CLAUDE.md
