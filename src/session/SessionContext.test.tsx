@@ -36,6 +36,21 @@ function renderSession() {
   });
 }
 
+// src/crypto/e2e.ts's createKeyBackup runs a real scrypt KDF (@noble/hashes),
+// which yields cooperatively via a chain of real `setTimeout(0)` macrotasks
+// (see node_modules/@noble/hashes/utils.js's nextTick/asyncLoop) rather than
+// a single microtask. Any signIn/signUp path that provisions or opens an E2E
+// identity therefore leaves a few of those macrotasks still draining a moment
+// after the awaited call returns. Left alone, one can fire mid-render of the
+// *next* test's SessionProvider mount, which — with React 19 /
+// react-test-renderer 19.2.3 — has been observed to hand that next
+// renderHook() a torn-down root ("Can't access .root on unmounted test
+// renderer"). Unmounting this test's own renderer and yielding a beat before
+// moving on avoids that; there is nothing under test in the drain itself.
+async function flushRealAsyncCryptoWork() {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
 beforeEach(() => {
   resetSecureStoreMock();
   jest.restoreAllMocks();
@@ -43,7 +58,15 @@ beforeEach(() => {
 
 describe("signIn_validCredentials_persistsTokensAndResolvesUser", () => {
   it("stores the returned tokens and resolves the user profile (integration scenario 1)", async () => {
-    installFetchQueue(jsonResponse(200, authSuccessBody), jsonResponse(200, meProfileFixture));
+    // authSuccessBody carries no `keys` — signIn treats that as a pre-E2E
+    // account and provisions one via an extra PUT /api/users/me/keys call
+    // (src/session/SessionContext.tsx) before the profile lookup, hence 3
+    // queued responses: login, key provisioning, profile.
+    installFetchQueue(
+      jsonResponse(200, authSuccessBody),
+      jsonResponse(200, {}),
+      jsonResponse(200, meProfileFixture)
+    );
     const { result } = renderSession();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -95,7 +118,7 @@ describe("atomicSignIn_profileLookupFailsAfterTokensPersisted", () => {
       jsonResponse(200, authSuccessBody),
       () => Promise.reject(new TypeError("Network request failed"))
     );
-    const { result } = renderSession();
+    const { result, unmount } = renderSession();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await expect(
@@ -107,6 +130,8 @@ describe("atomicSignIn_profileLookupFailsAfterTokensPersisted", () => {
     await expect(getAccessToken()).resolves.toBeNull();
     await expect(getRefreshToken()).resolves.toBeNull();
     expect(result.current.user).toBeNull();
+    unmount();
+    await flushRealAsyncCryptoWork();
   });
 });
 
@@ -116,7 +141,7 @@ describe("atomicSignUp_profileLookupFailsAfterTokensPersisted", () => {
       jsonResponse(200, authSuccessBody),
       () => Promise.reject(new TypeError("Network request failed"))
     );
-    const { result } = renderSession();
+    const { result, unmount } = renderSession();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await expect(
@@ -128,6 +153,8 @@ describe("atomicSignUp_profileLookupFailsAfterTokensPersisted", () => {
     await expect(getAccessToken()).resolves.toBeNull();
     await expect(getRefreshToken()).resolves.toBeNull();
     expect(result.current.user).toBeNull();
+    unmount();
+    await flushRealAsyncCryptoWork();
   });
 });
 
@@ -149,6 +176,11 @@ describe("restartAfterFailure_nothingRetained_landsOnUnauthenticatedStack", () =
       await expect(first.result.current.signIn(TEST_HANDLE, TEST_PASSWORD)).rejects.toBeDefined();
     });
     await expect(getAccessToken()).resolves.toBeNull();
+    // Unmount and drain before the second mount below — see
+    // flushRealAsyncCryptoWork's comment (this signIn also provisioned an
+    // E2E identity via real scrypt before its rollback).
+    first.unmount();
+    await flushRealAsyncCryptoWork();
 
     // "Restart": a brand new SessionProvider mount, as app start would produce.
     const fetchMock = installFetchQueue();
@@ -157,6 +189,7 @@ describe("restartAfterFailure_nothingRetained_landsOnUnauthenticatedStack", () =
 
     expect(second.result.current.user).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+    second.unmount();
   });
 });
 

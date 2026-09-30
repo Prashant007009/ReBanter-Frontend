@@ -6,12 +6,14 @@ import { colors, fonts } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
 import { ZapIcon, ReplyIcon, RepostIcon, MoreHorizontalIcon, VideoIcon, MusicNoteIcon } from "@/assets/icons";
 import { getRoomLoops, tuneIn, type Loop } from "@/api/rooms";
+import { getLoop } from "@/api/compose";
+import { LoopVideo } from "@/components/loops/LoopVideo";
 import type { RootStackParamList } from "@/navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "LoopsPlayer">;
 
 export function LoopsPlayerScreen({ route }: Props) {
-  const { roomId } = route.params;
+  const { roomId, loopId, startLoopId } = route.params;
   const [loops, setLoops] = useState<Loop[]>([]);
   const [index, setIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,20 +23,24 @@ export function LoopsPlayerScreen({ route }: Props) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await getRoomLoops(roomId);
+      // A standalone loop (posted from the composer) or a room's loops.
+      const res = loopId ? { items: [await getLoop(loopId)] } : roomId ? await getRoomLoops(roomId) : { items: [] };
       setLoops(res.items);
+      // Opened from a Roam tile: start on that loop.
+      if (startLoopId) setIndex(Math.max(0, res.items.findIndex((l) => l.id === startLoopId)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load this room's loops");
     } finally {
       setIsLoading(false);
     }
-  }, [roomId]);
+  }, [roomId, loopId, startLoopId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   async function onTuneIn() {
+    if (!roomId) return;
     setTuned(true);
     try {
       await tuneIn(roomId);
@@ -64,10 +70,12 @@ export function LoopsPlayerScreen({ route }: Props) {
 
   return (
     <View style={styles.container}>
-      {cover ? (
-        <Image source={{ uri: cover.url }} style={StyleSheet.absoluteFillObject} />
+      {cover?.kind === "video" ? (
+        <LoopVideo key={loop.id} url={cover.url} rate={loop.playbackRate ?? 1} trimStart={loop.trimStartSec} trimEnd={loop.trimEndSec} />
+      ) : cover ? (
+        <Image source={{ uri: cover.url }} style={StyleSheet.absoluteFill} />
       ) : (
-        <LinearGradient colors={["#2B2118", "#584232", "#1A1510"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={["#2B2118", "#584232", "#1A1510"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />
       )}
       <View style={styles.scrim} />
 
@@ -124,7 +132,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#2B2118" },
   center: { flex: 1, backgroundColor: "#2B2118", alignItems: "center", justifyContent: "center", padding: 24 },
   emptyText: { color: colors.surfaceRaised, textAlign: "center" },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(23,20,18,0.35)" },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(23,20,18,0.35)" },
   topBar: { position: "absolute", top: 56, left: 20, right: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 52 },
   topBarLeft: { flexDirection: "row", alignItems: "center", gap: 18 },
   roomLabel: { fontFamily: fonts.display, fontSize: 19, color: colors.surfaceRaised },

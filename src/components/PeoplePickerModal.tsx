@@ -68,15 +68,15 @@ export function PeoplePickerModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(23,20,18,0.4)" },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 18, paddingHorizontal: 20, paddingBottom: 40, maxHeight: "70%" },
+  backdrop: { flex: 1, backgroundColor: "rgba(15,14,71,0.5)" },
+  sheet: { backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 18, paddingHorizontal: 20, paddingBottom: 40, maxHeight: "70%" },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   title: { fontFamily: fonts.displaySemibold, fontSize: 17, color: colors.ink },
-  close: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.accent },
+  close: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.ink },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
   divider: { borderTopWidth: 1, borderTopColor: colors.divider },
   name: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
   handle: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint, marginTop: 2 },
-  selectedDot: { width: 10, height: 10, borderRadius: 999, backgroundColor: colors.accent },
+  selectedDot: { width: 10, height: 10, borderRadius: 999, backgroundColor: colors.ink },
   empty: { color: colors.inkMuted, textAlign: "center", marginVertical: 24 },
 });

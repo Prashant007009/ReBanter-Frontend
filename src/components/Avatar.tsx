@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Image, StyleSheet, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { fonts } from "@/theme/colors";
 
 // Exact avatar gradient/ink pairs pulled from the design (145deg stops).
 const PALETTE = [
@@ -59,7 +60,7 @@ export function Avatar({
       end={{ x: 0.85, y: 1 }}
       style={[styles.fallback, { width: size, height: size, borderRadius }]}
     >
-      <Text style={{ color: ink, fontWeight: "700", fontSize: size * 0.36 }}>{initials}</Text>
+      <Text style={{ color: ink, fontFamily: fonts.bodyBold, fontSize: size * 0.36 }}>{initials}</Text>
     </LinearGradient>
   );
 }

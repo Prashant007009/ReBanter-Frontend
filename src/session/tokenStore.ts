@@ -10,12 +10,12 @@ const REFRESH_KEY = "rebanter.refreshToken";
 // (the actual target platform) always use SecureStore.
 const isWeb = Platform.OS === "web";
 
-async function getItem(key: string): Promise<string | null> {
+export async function getItem(key: string): Promise<string | null> {
   if (isWeb) return window.localStorage.getItem(key);
   return SecureStore.getItemAsync(key);
 }
 
-async function setItem(key: string, value: string): Promise<void> {
+export async function setItem(key: string, value: string): Promise<void> {
   if (isWeb) {
     window.localStorage.setItem(key, value);
     return;
@@ -23,7 +23,7 @@ async function setItem(key: string, value: string): Promise<void> {
   await SecureStore.setItemAsync(key, value);
 }
 
-async function deleteItem(key: string): Promise<void> {
+export async function deleteItem(key: string): Promise<void> {
   if (isWeb) {
     window.localStorage.removeItem(key);
     return;

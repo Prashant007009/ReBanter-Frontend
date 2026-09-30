@@ -1,154 +1,877 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import dayjs from "@/lib/dayjs";
-import { colors, fonts } from "@/theme/colors";
+import { setStatusBarStyle } from "expo-status-bar";
+
+import { stream, fonts, TAB_BAR_CLEARANCE } from "@/theme/colors";
 import { Avatar } from "@/components/Avatar";
-import { DropCard } from "@/components/DropCard";
-import { SearchIcon, MessageIcon, PlusIcon } from "@/assets/icons";
+import { StreamPost } from "@/components/stream/StreamPost";
+import {
+  OpenMenuContext,
+  usePostActions,
+} from "@/components/stream/usePostActions";
+import { MomentRing } from "@/components/stream/MomentRing";
+import { MomentViewer } from "@/components/stream/MomentViewer";
+import {
+  ChatGlyph,
+  CheckGlyph,
+  PlusGlyph,
+  SearchGlyph,
+} from "@/components/stream/StreamIcons";
+
 import { getFeed } from "@/api/drops";
-import { getMyCrew } from "@/api/crew";
-import { getPulse } from "@/api/pulse";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
-import type { Drop, UserSummary } from "@/api/types";
+import { getMoments } from "@/api/moments";
+import { getUnreadBanterCount } from "@/api/banters";
+
+import { useSession } from "@/session/SessionContext";
+import { realtimeSocket } from "@/realtime/socket";
+
+import type {
+  MomentGroup,
+  StreamDrop,
+  StreamTab,
+} from "@/api/types";
+
 import type { RootStackParamList } from "@/navigation/types";
 
+const TABS: [StreamTab, string][] = [
+  ["forYou", "For you"],
+  ["following", "Following"],
+  ["takes", "Hot takes 🔥"],
+];
+
 export function StreamScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [drops, setDrops] = useState<Drop[]>([]);
-  const [crewmates, setCrewmates] = useState<UserSummary[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const { user } = useSession();
+
+  const [tab, setTab] = useState<StreamTab>("forYou");
+
+  const [drops, setDrops] = useState<StreamDrop[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const [moments, setMoments] = useState<MomentGroup[]>([]);
+  const [viewerGroup, setViewerGroup] = useState<number | null>(null);
+
+  const [unread, setUnread] = useState(0);
+
+  const loadingMoreRef = useRef(false);
+
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+
+  /**
+   * -------------------------------------------------------
+   * LOAD FEED
+   * -------------------------------------------------------
+   */
+
+  const loadFeed = useCallback(async (which: StreamTab) => {
     setError(null);
+
     try {
-      const [feed, crew, pulse] = await Promise.all([getFeed(), getMyCrew(), getPulse()]);
-      setDrops(feed.items);
-      setCrewmates(crew);
-      setUnreadCount(pulse.items.filter((n) => !n.read).length);
+      const res = await getFeed(which);
+
+      // Don't allow an old request to overwrite the currently
+      // selected tab.
+      if (tabRef.current !== which) {
+        return;
+      }
+
+      setDrops(res.items);
+      setNextCursor(res.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't load your stream");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't load your stream",
+      );
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-  useRefreshOnFocus(load);
+  /**
+   * -------------------------------------------------------
+   * LOAD MOMENTS + UNREAD COUNT
+   * -------------------------------------------------------
+   */
 
-  const activeAuthorIds = useMemo(() => new Set(drops.map((d) => d.author.id)), [drops]);
+  const loadSide = useCallback(() => {
+    getMoments()
+      .then((res) => {
+        setMoments(res.items);
+      })
+      .catch(() => {});
+
+    getUnreadBanterCount()
+      .then((res) => {
+        setUnread(res.count);
+      })
+      .catch(() => {});
+  }, []);
+
+  /**
+   * -------------------------------------------------------
+   * TAB CHANGE
+   * -------------------------------------------------------
+   */
+
+  useEffect(() => {
+    setIsLoading(true);
+    setDrops([]);
+    setNextCursor(null);
+
+    loadFeed(tab);
+  }, [tab, loadFeed]);
+
+  /**
+   * -------------------------------------------------------
+   * SCREEN FOCUS
+   * -------------------------------------------------------
+   */
+
+  const hasFocused = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+
+      loadSide();
+
+      if (hasFocused.current) {
+        loadFeed(tabRef.current);
+      }
+
+      hasFocused.current = true;
+
+      return () => {
+        setStatusBarStyle("dark");
+      };
+    }, [loadSide, loadFeed]),
+  );
+
+  /**
+   * -------------------------------------------------------
+   * REALTIME UNREAD COUNT
+   * -------------------------------------------------------
+   */
+
+  useEffect(() => {
+    const off = realtimeSocket.on("message.new", () => {
+      getUnreadBanterCount()
+        .then((res) => {
+          setUnread(res.count);
+        })
+        .catch(() => {});
+    });
+
+    return () => {
+      off();
+    };
+  }, []);
+
+  /**
+   * -------------------------------------------------------
+   * LOAD MORE
+   * -------------------------------------------------------
+   */
+
+  async function loadMore() {
+    if (!nextCursor || loadingMoreRef.current) {
+      return;
+    }
+
+    loadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const res = await getFeed(tab, nextCursor);
+
+      setDrops((prev) => {
+        const seen = new Set(prev.map((d) => d.id));
+
+        return [
+          ...prev,
+          ...res.items.filter((d) => !seen.has(d.id)),
+        ];
+      });
+
+      setNextCursor(res.nextCursor);
+    } catch {
+      // Keep existing posts.
+      // Next scroll will retry.
+    } finally {
+      loadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }
+
+  /**
+   * -------------------------------------------------------
+   * REFRESH
+   * -------------------------------------------------------
+   */
+
+  function refresh() {
+    setIsRefreshing(true);
+
+    loadFeed(tab);
+    loadSide();
+  }
+
+  /**
+   * -------------------------------------------------------
+   * MOMENT RINGS
+   * -------------------------------------------------------
+   */
+
+  const ringByAuthor = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        frames: number;
+        seen: boolean;
+        index: number;
+      }
+    >();
+
+    moments.forEach((g, index) => {
+      map.set(g.author.id, {
+        frames: g.frames.length,
+        seen: g.allSeen,
+        index,
+      });
+    });
+
+    return map;
+  }, [moments]);
+
+  /**
+   * -------------------------------------------------------
+   * POST ACTIONS
+   * -------------------------------------------------------
+   */
+
+  const {
+    actions,
+    menuFor,
+    setMenuFor,
+    followedNow,
+    sheets,
+  } = usePostActions(setDrops, {
+    onOpenMoment: (authorId) => {
+      const ring = ringByAuthor.get(authorId);
+
+      if (ring) {
+        setViewerGroup(ring.index);
+      }
+    },
+  });
+
+  /**
+   * -------------------------------------------------------
+   * MARK MOMENT FRAME SEEN
+   * -------------------------------------------------------
+   */
+
+  const markFrameSeen = useCallback(
+    (groupIndex: number, frameIndex: number) => {
+      setMoments((prev) =>
+        prev.map((group, gi) => {
+          if (
+            gi !== groupIndex ||
+            group.frames[frameIndex]?.seen
+          ) {
+            return group;
+          }
+
+          const frames = group.frames.map((frame, fi) =>
+            fi === frameIndex
+              ? {
+                  ...frame,
+                  seen: true,
+                }
+              : frame,
+          );
+
+          return {
+            ...group,
+            frames,
+            allSeen: frames.every((frame) => frame.seen),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  /**
+   * -------------------------------------------------------
+   * MOMENTS HEADER
+   *
+   * This is a HORIZONTAL FlatList.
+   * It lives INSIDE the vertical feed FlatList.
+   * -------------------------------------------------------
+   */
+
+  const momentsHeader = (
+    <View>
+      <FlatList
+        horizontal
+        nestedScrollEnabled
+        data={moments}
+        keyExtractor={(item) => item.author.id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.moments}
+        ListHeaderComponent={
+          <Pressable
+            style={styles.moment}
+            onPress={() => navigation.navigate("NewMoment")}
+            accessibilityLabel="Add a moment"
+          >
+            <View>
+              <View style={styles.addTile}>
+                {user ? (
+                  <Avatar
+                    handle={user.handle}
+                    displayName={user.displayName}
+                    avatarUrl={user.avatarUrl}
+                    size={52}
+                    radius={19}
+                  />
+                ) : null}
+              </View>
+
+              <View style={styles.addBadge}>
+                <PlusGlyph
+                  size={12}
+                  strokeWidth={3.6}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.momentLabel}>
+              Add
+            </Text>
+          </Pressable>
+        }
+        renderItem={({ item: g, index: i }) => {
+          const mine = g.author.id === user?.id;
+
+          return (
+            <Pressable
+              style={styles.moment}
+              onPress={() => setViewerGroup(i)}
+              accessibilityLabel={`Watch ${g.author.handle}'s moments`}
+            >
+              <View>
+                <MomentRing
+                  size={68}
+                  radius={26}
+                  frames={g.frames.length}
+                  seen={g.allSeen}
+                >
+                  <View style={styles.momentAvatar}>
+                    <Avatar
+                      handle={g.author.handle}
+                      displayName={g.author.displayName}
+                      avatarUrl={g.author.avatarUrl}
+                      size={56}
+                      radius={21}
+                    />
+                  </View>
+                </MomentRing>
+
+                {g.live && !g.allSeen ? (
+                  <Text style={styles.live}>
+                    LIVE
+                  </Text>
+                ) : null}
+              </View>
+
+              <Text
+                style={[
+                  styles.momentLabel,
+                  {
+                    color: g.allSeen
+                      ? stream.inkFaint
+                      : stream.ink,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {mine
+                  ? "Your moment"
+                  : g.author.handle}
+              </Text>
+            </Pressable>
+          );
+        }}
+      />
+
+      {/* --------------------------------------------------
+          TABS
+          -------------------------------------------------- */}
+
+      <FlatList
+        horizontal
+        nestedScrollEnabled
+        data={TABS}
+        keyExtractor={([id]) => id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+        renderItem={({ item: [id, label] }) => {
+          const active = tab === id;
+
+          return (
+            <Pressable
+              onPress={() => setTab(id)}
+              style={[
+                styles.tab,
+                {
+                  backgroundColor: active
+                    ? stream.ink
+                    : "transparent",
+                  borderColor: active
+                    ? stream.ink
+                    : stream.raisedBorder,
+                },
+              ]}
+              accessibilityState={{
+                selected: active,
+              }}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  {
+                    color: active
+                      ? stream.bg
+                      : stream.inkSoft,
+                  },
+                ]}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
+  );
+
+  /**
+   * -------------------------------------------------------
+   * FOOTER
+   * -------------------------------------------------------
+   */
+
+  const footer = isLoadingMore ? (
+    <ActivityIndicator
+      style={styles.loadingMore}
+      color={stream.inkMuted}
+    />
+  ) : drops.length > 0 && !nextCursor ? (
+    <View style={styles.caughtUp}>
+      <View style={styles.caughtUpIcon}>
+        <CheckGlyph
+          size={22}
+          strokeWidth={2.8}
+        />
+      </View>
+
+      <Text style={styles.caughtUpTitle}>
+        You're all caught up
+      </Text>
+
+      <Text style={styles.caughtUpSub}>
+        New posts from your people land here first.
+      </Text>
+    </View>
+  ) : null;
+
+  /**
+   * -------------------------------------------------------
+   * SCROLLING FEED HEADER
+   * -------------------------------------------------------
+   * The top bar is intentionally inside the FlatList header.
+   * This makes the ReBanter header scroll away together with
+   * moments, tabs, and posts instead of remaining fixed.
+   */
+  const feedHeader = (
+    <>
+      {/* ==================================================
+          SCROLLING TOP BAR
+          ================================================== */}
+
+      <View style={styles.topBar}>
+        <Text style={styles.wordmark}>
+          ReBanter
+          <Text style={{ color: stream.lime }}>
+            .
+          </Text>
+        </Text>
+
+        <Pressable
+          style={styles.topButton}
+          onPress={() =>
+            navigation.navigate("Tabs", {
+              screen: "Roam",
+            })
+          }
+          accessibilityLabel="Search"
+        >
+          <SearchGlyph />
+        </Pressable>
+
+        <Pressable
+          style={styles.topButton}
+          onPress={() =>
+            navigation.navigate("Banters")
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Open banters"
+        >
+          <ChatGlyph />
+
+          {unread > 0 ? (
+            <Text style={styles.badge}>
+              {unread > 9 ? "9+" : unread}
+            </Text>
+          ) : null}
+        </Pressable>
+      </View>
+
+      {/* Moments + tabs also scroll as part of the same FlatList */}
+      {momentsHeader}
+    </>
+  );
+
+  /**
+   * -------------------------------------------------------
+   * SCREEN
+   * -------------------------------------------------------
+   */
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.date}>{dayjs().format("dddd, D MMM").toUpperCase()}</Text>
-          <Text style={styles.title}>Stream</Text>
-        </View>
-        <View style={styles.headerIcons}>
-          <SearchIcon size={22} color={colors.ink} />
-          <Pressable onPress={() => navigation.navigate("Banters")} style={{ position: "relative" }}>
-            <MessageIcon size={22} color={colors.ink} />
-            {unreadCount > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
-        </View>
-      </View>
-
-      {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : (
+      <OpenMenuContext.Provider value={menuFor}>
         <FlatList
-          data={drops}
+          style={styles.feed}
+          data={isLoading ? [] : drops}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={crewmates}
-              keyExtractor={(m) => m.id}
-              contentContainerStyle={styles.stories}
-              ListHeaderComponent={
-                <Pressable style={styles.storyItem} onPress={() => navigation.navigate("NewDrop")}>
-                  <View style={styles.addTile}>
-                    <PlusIcon size={18} color={colors.accent} strokeWidth={2.4} />
-                  </View>
-                  <Text style={styles.storyLabelMuted}>Add</Text>
-                </Pressable>
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          ListHeaderComponent={feedHeader}
+          ListFooterComponent={footer}
+          ListEmptyComponent={
+            isLoading ? (
+              <ActivityIndicator
+                style={styles.initialLoading}
+                color={stream.lime}
+              />
+            ) : error ? (
+              <Text style={styles.empty}>
+                {error}
+              </Text>
+            ) : (
+              <Text style={styles.empty}>
+                {tab === "following"
+                  ? "Nothing from your crew yet — follow people from For you."
+                  : tab === "takes"
+                    ? "No hot takes yet. Drop one with the + button."
+                    : "No drops yet — your crew's feed will show up here."}
+              </Text>
+            )
+          }
+          renderItem={({ item }) => (
+            <StreamPost
+              drop={item}
+              ring={
+                ringByAuthor.get(item.author.id) ??
+                null
               }
-              renderItem={({ item }) => {
-                const active = activeAuthorIds.has(item.id);
-                return (
-                  <View style={styles.storyItem}>
-                    <View style={[styles.storyRing, active ? styles.storyRingActive : styles.storyRingIdle]}>
-                      <Avatar handle={item.handle} displayName={item.displayName} avatarUrl={item.avatarUrl} size={55} radius={16} />
-                    </View>
-                    <Text style={active ? styles.storyLabelActive : styles.storyLabelMuted}>{item.handle}</Text>
-                  </View>
-                );
-              }}
+              menuOpen={menuFor === item.id}
+              followedNow={
+                !!followedNow[item.author.id]
+              }
+              actions={actions}
+            />
+          )}
+          extraData={menuFor}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.6}
+          onScrollBeginDrag={() => {
+            if (menuFor) {
+              setMenuFor(null);
+            }
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refresh}
+              tintColor={stream.inkMuted}
             />
           }
-          renderItem={({ item }) => <DropCard drop={item} />}
-          ListEmptyComponent={<Text style={styles.empty}>No drops yet — your crew's feed will show up here.</Text>}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          onRefresh={load}
-          refreshing={isLoading}
+          contentContainerStyle={
+            styles.feedContent
+          }
         />
-      )}
+      </OpenMenuContext.Provider>
+
+      {/* ==================================================
+          MOMENT VIEWER
+          ================================================== */}
+
+      <MomentViewer
+        groups={moments}
+        startGroup={viewerGroup}
+        myUserId={user?.id}
+        onClose={() => setViewerGroup(null)}
+        onFrameSeen={markFrameSeen}
+      />
+
+      {sheets}
     </View>
   );
 }
 
+/**
+ * ========================================================
+ * STYLES
+ * ========================================================
+ */
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 },
-  date: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 1.5, color: colors.inkFaint },
-  title: { fontFamily: fonts.display, fontSize: 30, color: colors.ink, marginTop: 7 },
-  headerIcons: { flexDirection: "row", alignItems: "center", gap: 9, paddingBottom: 3 },
+  container: {
+    flex: 1,
+    backgroundColor: stream.bg,
+  },
+
+  /**
+   * Header that scrolls with the feed.
+   */
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 52,
+    marginTop: 18,
+    paddingLeft: 18,
+    paddingRight: 10,
+    backgroundColor: stream.headerGlass,
+  },
+
+  wordmark: {
+    flex: 1,
+    fontFamily: fonts.display,
+    fontSize: 27,
+    letterSpacing: -1.1,
+    color: stream.ink,
+  },
+
+  topButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   badge: {
     position: "absolute",
-    top: -5,
-    right: -6,
-    minWidth: 17,
-    height: 17,
-    borderRadius: 999,
-    backgroundColor: colors.cheer,
-    alignItems: "center",
-    justifyContent: "center",
+    top: 4,
+    right: 2,
+    minWidth: 18,
+    height: 18,
     paddingHorizontal: 4,
+    borderRadius: 9,
+    overflow: "hidden",
+    backgroundColor: stream.lime,
+    color: stream.onLime,
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: stream.bg,
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    lineHeight: 14,
+    textAlign: "center",
   },
-  badgeText: { color: "#fff", fontFamily: fonts.bodyBold, fontSize: 9 },
-  stories: { paddingHorizontal: 20, paddingBottom: 18, gap: 10 },
-  storyItem: { width: 58, alignItems: "center", marginRight: 10 },
+
+  /**
+   * Main vertical feed.
+   */
+  feed: {
+    flex: 1,
+  },
+
+  feedContent: {
+    paddingBottom: TAB_BAR_CLEARANCE,
+  },
+
+  /**
+   * Horizontal moments list.
+   */
+  moments: {
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 16,
+  },
+
+  moment: {
+    width: 70,
+    alignItems: "center",
+    gap: 7,
+  },
+
   addTile: {
-    width: 58,
-    height: 74,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceRaised,
+    width: 68,
+    height: 68,
+    borderRadius: 24,
+    backgroundColor: "#18181C",
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: colors.dashedBorder,
+    borderColor: "#3E3E46",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+
+  addBadge: {
+    position: "absolute",
+    right: -3,
+    bottom: -3,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: stream.lime,
+    borderWidth: 3,
+    borderColor: stream.bg,
     alignItems: "center",
     justifyContent: "center",
   },
-  storyRing: { width: 58, height: 74, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  storyRingActive: { borderWidth: 2.5, borderColor: colors.accent },
-  storyRingIdle: { borderWidth: 2, borderColor: colors.hairlineStrong },
-  storyLabelActive: { fontFamily: fonts.bodySemibold, fontSize: 10, color: colors.ink, textAlign: "center", marginTop: 7 },
-  storyLabelMuted: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.inkMuted, textAlign: "center", marginTop: 7 },
-  error: { color: colors.cheer, textAlign: "center", marginTop: 40 },
-  empty: { color: colors.inkMuted, textAlign: "center", marginTop: 40, paddingHorizontal: 32 },
+
+  momentAvatar: {
+    padding: 3,
+    borderRadius: 23,
+    backgroundColor: stream.bg,
+  },
+
+  live: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: -7,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: stream.red,
+    color: "#fff",
+    borderWidth: 2,
+    borderColor: stream.bg,
+    fontFamily: fonts.bodyBold,
+    fontSize: 9.5,
+    lineHeight: 14,
+    letterSpacing: 0.6,
+  },
+
+  momentLabel: {
+    maxWidth: 70,
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    color: stream.inkMuted,
+  },
+
+  /**
+   * Horizontal tabs.
+   */
+  tabs: {
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+
+  tab: {
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: "center",
+  },
+
+  tabText: {
+    fontFamily: fonts.bodySemibold,
+    fontSize: 13,
+  },
+
+  /**
+   * Empty/loading states.
+   */
+  initialLoading: {
+    marginTop: 40,
+  },
+
+  empty: {
+    color: stream.inkMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 40,
+    paddingHorizontal: 32,
+  },
+
+  loadingMore: {
+    paddingVertical: 24,
+  },
+
+  /**
+   * Caught up.
+   */
+  caughtUp: {
+    alignItems: "center",
+    gap: 6,
+    paddingTop: 36,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+  },
+
+  caughtUpIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: stream.lime,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  caughtUpTitle: {
+    fontFamily: fonts.display,
+    fontSize: 17,
+    color: stream.ink,
+  },
+
+  caughtUpSub: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: stream.inkMuted,
+    textAlign: "center",
+  },
 });

@@ -102,7 +102,15 @@ describe("SignInScreen_whitespaceOnlyHandle_rejectedAsEmpty", () => {
 
 describe("SignInScreen_validCredentials_signsInWithVisibleInFlightState", () => {
   it("persists tokens and resolves the session (integration scenario 1, SC2)", async () => {
-    installFetchQueue(jsonResponse(200, authSuccessBody), jsonResponse(200, meProfileFixture));
+    // authSuccessBody carries no `keys` — signIn treats that as a pre-E2E
+    // account and provisions one via an extra PUT /api/users/me/keys call
+    // (src/session/SessionContext.tsx) before the profile lookup, hence 3
+    // queued responses: login, key provisioning, profile.
+    installFetchQueue(
+      jsonResponse(200, authSuccessBody),
+      jsonResponse(200, {}),
+      jsonResponse(200, meProfileFixture)
+    );
     const { getByLabelText, getByRole, getByTestId } = await renderSignedOut();
 
     fireEvent.changeText(getByLabelText(/handle/i), TEST_HANDLE);

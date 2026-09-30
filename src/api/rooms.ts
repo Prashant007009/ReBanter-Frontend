@@ -8,10 +8,19 @@ export interface Loop {
   durationSec: number;
   audioLabel: string | null;
   media: Media[];
+  // Playback settings from the composer (standalone loops).
+  playbackRate?: number;
+  trimStartSec?: number | null;
+  trimEndSec?: number | null;
+  effects?: string[];
 }
 
 export function getRooms() {
-  return apiFetch<{ items: Room[] }>("/api/rooms");
+  return apiFetch<{ items: Room[]; roamingNow: number }>("/api/rooms");
+}
+
+export function joinRoom(roomId: string, join: boolean) {
+  return apiFetch<Room>(`/api/rooms/${roomId}/join`, { method: join ? "POST" : "DELETE" });
 }
 
 export function getRoomLoops(roomId: string) {

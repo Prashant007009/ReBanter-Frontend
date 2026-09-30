@@ -1,20 +1,30 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TabNavigator } from "./TabNavigator";
 import { AuthNavigator } from "./AuthNavigator";
 import { LoopsPlayerScreen } from "@/screens/LoopsPlayerScreen";
 import { BantersScreen } from "@/screens/BantersScreen";
 import { BanterThreadScreen } from "@/screens/BanterThreadScreen";
-import { NewDropScreen } from "@/screens/NewDropScreen";
+import { ComposerScreen } from "@/screens/ComposerScreen";
+import { TagScreen } from "@/screens/TagScreen";
+import { DropScreen } from "@/screens/DropScreen";
+import { CollectionScreen } from "@/screens/CollectionScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { EditProfileScreen } from "@/screens/EditProfileScreen";
 import { UserProfileScreen } from "@/screens/UserProfileScreen";
+import { SplashScreen } from "@/components/SplashScreen";
 import { useSession } from "@/session/SessionContext";
 import { colors } from "@/theme/colors";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: "transparent" },
+};
 
 function AppNavigator() {
   return (
@@ -32,7 +42,12 @@ function AppNavigator() {
           a plain push is what we're testing against here since there's no
           emulator in this environment. Fine to revisit once tested on a
           real device/simulator. */}
-      <Stack.Screen name="NewDrop" component={NewDropScreen} />
+      <Stack.Screen name="NewDrop" component={ComposerScreen} />
+      <Stack.Screen name="NewMoment" component={ComposerScreen} />
+      <Stack.Screen name="NewTake" component={ComposerScreen} />
+      <Stack.Screen name="Tag" component={TagScreen} />
+      <Stack.Screen name="Drop" component={DropScreen} />
+      <Stack.Screen name="Collection" component={CollectionScreen} />
     </Stack.Navigator>
   );
 }
@@ -41,16 +56,18 @@ export function RootNavigator() {
   const { user, isLoading } = useSession();
 
   if (isLoading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.accent} size="large" />
-      </View>
-    );
+    return <SplashScreen />;
   }
 
-  return <NavigationContainer>{user ? <AppNavigator /> : <AuthNavigator />}</NavigationContainer>;
+  return (
+    <LinearGradient colors={colors.canvasGradientColors} style={styles.root}>
+      <NavigationContainer theme={navigationTheme}>
+        {user ? <AppNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvas },
+  root: { flex: 1 },
 });

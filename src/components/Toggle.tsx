@@ -6,7 +6,7 @@ export function Toggle({ value, onChange, disabled }: { value: boolean; onChange
     <Pressable
       onPress={() => onChange(!value)}
       disabled={disabled}
-      style={[styles.track, { backgroundColor: value ? colors.accent : "#E6E0D6", justifyContent: value ? "flex-end" : "flex-start" }]}
+      style={[styles.track, { backgroundColor: value ? colors.accent : "rgba(15,14,71,0.16)", justifyContent: value ? "flex-end" : "flex-start" }]}
     >
       <View style={styles.thumb} />
     </Pressable>

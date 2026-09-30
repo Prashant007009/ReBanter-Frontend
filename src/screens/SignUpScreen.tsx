@@ -12,7 +12,8 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { colors } from "@/theme/colors";
+import { colors, fonts } from "@/theme/colors";
+import { ScreenGradient } from "@/components/ScreenGradient";
 import { useSession } from "@/session/SessionContext";
 import { validateSignUp } from "@/auth/authRules";
 import { useAuthSubmit } from "@/auth/useAuthSubmit";
@@ -44,106 +45,108 @@ export function SignUpScreen({ navigation }: Props) {
   }, [formError]);
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
-        <View style={styles.container}>
-          <Text style={styles.brand}>
-            ReBanter<Text style={{ color: colors.accent }}>.</Text>
-          </Text>
-          <Text style={styles.subtitle}>Start your own crew</Text>
-
-          <Text style={styles.label}>Handle</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. zoe.b"
-            placeholderTextColor={colors.inkFaint}
-            accessibilityLabel="Handle"
-            accessibilityHint={fieldErrors.handle}
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="username"
-            autoComplete="username"
-            returnKeyType="next"
-            blurOnSubmit={false}
-            value={handle}
-            onChangeText={setHandle}
-            onSubmitEditing={() => displayNameRef.current?.focus()}
-          />
-          {fieldErrors.handle ? <Text style={styles.fieldError}>{fieldErrors.handle}</Text> : null}
-
-          <Text style={styles.label}>Display name</Text>
-          <TextInput
-            ref={displayNameRef}
-            style={styles.input}
-            placeholder="e.g. Zoe B"
-            placeholderTextColor={colors.inkFaint}
-            accessibilityLabel="Display name"
-            accessibilityHint={fieldErrors.displayName}
-            autoCapitalize="words"
-            textContentType="name"
-            autoComplete="name"
-            returnKeyType="next"
-            blurOnSubmit={false}
-            value={displayName}
-            onChangeText={setDisplayName}
-            onSubmitEditing={() => passwordRef.current?.focus()}
-          />
-          {fieldErrors.displayName ? <Text style={styles.fieldError}>{fieldErrors.displayName}</Text> : null}
-
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            ref={passwordRef}
-            style={styles.input}
-            placeholder="Min 8 characters"
-            placeholderTextColor={colors.inkFaint}
-            accessibilityLabel="Password"
-            accessibilityHint={fieldErrors.password}
-            secureTextEntry
-            textContentType="newPassword"
-            autoComplete="new-password"
-            returnKeyType="go"
-            value={password}
-            onChangeText={setPassword}
-            onSubmitEditing={submit}
-          />
-          {fieldErrors.password ? <Text style={styles.fieldError}>{fieldErrors.password}</Text> : null}
-
-          {formError ? (
-            <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
-              {formError}
+    <ScreenGradient style={styles.flex}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
+          <View style={styles.container}>
+            <Text style={styles.brand}>
+              ReBanter<Text style={{ color: colors.accent }}>.</Text>
             </Text>
-          ) : null}
+            <Text style={styles.subtitle}>Start your own crew</Text>
 
-          <Pressable
-            style={[styles.primaryButton, isSubmitting && styles.primaryButtonBusy]}
-            onPress={submit}
-            accessibilityRole="button"
-            accessibilityLabel="Create account"
-            accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={colors.surfaceRaised} />
-            ) : (
-              <Text style={styles.primaryButtonText}>Create account</Text>
-            )}
-          </Pressable>
+            <Text style={styles.label}>Handle</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. zoe.b"
+              placeholderTextColor={colors.inkFaint}
+              accessibilityLabel="Handle"
+              accessibilityHint={fieldErrors.handle}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="username"
+              autoComplete="username"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              value={handle}
+              onChangeText={setHandle}
+              onSubmitEditing={() => displayNameRef.current?.focus()}
+            />
+            {fieldErrors.handle ? <Text style={styles.fieldError}>{fieldErrors.handle}</Text> : null}
 
-          <Pressable onPress={() => navigation.navigate("SignIn")} accessibilityRole="link">
-            <Text style={styles.link}>Already have an account? Sign in</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Text style={styles.label}>Display name</Text>
+            <TextInput
+              ref={displayNameRef}
+              style={styles.input}
+              placeholder="e.g. Zoe B"
+              placeholderTextColor={colors.inkFaint}
+              accessibilityLabel="Display name"
+              accessibilityHint={fieldErrors.displayName}
+              autoCapitalize="words"
+              textContentType="name"
+              autoComplete="name"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              value={displayName}
+              onChangeText={setDisplayName}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+            {fieldErrors.displayName ? <Text style={styles.fieldError}>{fieldErrors.displayName}</Text> : null}
+
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              ref={passwordRef}
+              style={styles.input}
+              placeholder="Min 8 characters"
+              placeholderTextColor={colors.inkFaint}
+              accessibilityLabel="Password"
+              accessibilityHint={fieldErrors.password}
+              secureTextEntry
+              textContentType="newPassword"
+              autoComplete="new-password"
+              returnKeyType="go"
+              value={password}
+              onChangeText={setPassword}
+              onSubmitEditing={submit}
+            />
+            {fieldErrors.password ? <Text style={styles.fieldError}>{fieldErrors.password}</Text> : null}
+
+            {formError ? (
+              <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+                {formError}
+              </Text>
+            ) : null}
+
+            <Pressable
+              style={[styles.primaryButton, isSubmitting && styles.primaryButtonBusy]}
+              onPress={submit}
+              accessibilityRole="button"
+              accessibilityLabel="Create account"
+              accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={colors.ink} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Create account</Text>
+              )}
+            </Pressable>
+
+            <Pressable onPress={() => navigation.navigate("SignIn")} accessibilityRole="link">
+              <Text style={styles.link}>Already have an account? Sign in</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenGradient>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: "center" },
-  container: { padding: 24, gap: 8, backgroundColor: colors.canvas },
-  brand: { fontSize: 34, fontWeight: "700", color: colors.ink, marginBottom: 4 },
-  subtitle: { fontSize: 15, color: colors.inkMuted, marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: "600", color: colors.inkMuted, marginTop: 4 },
+  container: { padding: 24, gap: 8 },
+  brand: { fontFamily: fonts.display, fontSize: 34, color: colors.onDark, marginBottom: 4 },
+  subtitle: { fontFamily: fonts.body, fontSize: 15, color: colors.onDarkMuted, marginBottom: 20 },
+  label: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.onDarkMuted, marginTop: 4 },
   input: {
     height: 50,
     borderRadius: 16,
@@ -151,10 +154,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.hairline,
     paddingHorizontal: 16,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.ink,
   },
-  fieldError: { color: colors.danger, fontSize: 13 },
+  fieldError: { fontFamily: fonts.bodyMedium, color: colors.danger, fontSize: 13 },
   primaryButton: {
     marginTop: 12,
     height: 50,
@@ -164,7 +168,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryButtonBusy: { opacity: 0.6 },
-  primaryButtonText: { color: colors.surfaceRaised, fontWeight: "700", fontSize: 15 },
-  error: { color: colors.danger, fontSize: 13, backgroundColor: colors.cheerTint, borderRadius: 12, padding: 10 },
-  link: { marginTop: 16, color: colors.accent, fontWeight: "600", textAlign: "center" },
+  primaryButtonText: { fontFamily: fonts.bodyBold, color: colors.ink, fontSize: 15 },
+  error: {
+    fontFamily: fonts.bodyMedium,
+    color: colors.danger,
+    fontSize: 13,
+    backgroundColor: colors.cheerTint,
+    borderRadius: 12,
+    padding: 10,
+  },
+  link: { fontFamily: fonts.bodySemibold, marginTop: 16, color: colors.accent, textAlign: "center" },
 });

@@ -29,5 +29,8 @@ export async function uploadLocalAsset(localUri: string, contentType: string): P
     method: "POST",
     body: JSON.stringify({ objectKey }),
   });
-  return `${BASE_URL}${url}`;
+  // The backend now returns an absolute URL (Supabase Storage's public
+  // object URL) rather than a same-origin path — only prefix BASE_URL if
+  // it's still relative, so this keeps working either way.
+  return url.startsWith("http") ? url : `${BASE_URL}${url}`;
 }

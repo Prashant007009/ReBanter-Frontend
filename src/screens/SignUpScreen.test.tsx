@@ -191,7 +191,13 @@ describe("SignUpScreen_doublePressWhileInFlight_issuesExactlyOneRequest", () => 
     fireEvent.press(button);
     fireEvent.press(button);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // signUp generates the E2E identity (src/crypto/e2e.ts, real async crypto)
+    // before its first network call, so — unlike signIn — the request isn't
+    // necessarily in flight yet in the same tick as the presses; wait for it
+    // rather than asserting synchronously. The double-submit guard itself
+    // (useAuthSubmit's inFlightRef) is still checked synchronously on the
+    // second press, before either signUp call's async work runs.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     gate.resolve(jsonResponse(200, authSuccessBody));
   });
 });
