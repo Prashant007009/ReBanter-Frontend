@@ -1,5 +1,153 @@
-import { ScreenPlaceholder } from "@/components/ScreenPlaceholder";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { colors, fonts } from "@/theme/colors";
+import { Avatar } from "@/components/Avatar";
+import { ZapIcon, ReplyIcon, RepostIcon, MoreHorizontalIcon, VideoIcon, MusicNoteIcon } from "@/assets/icons";
+import { getRoomLoops, tuneIn, type Loop } from "@/api/rooms";
+import { getLoop } from "@/api/compose";
+import { LoopVideo } from "@/components/loops/LoopVideo";
+import type { RootStackParamList } from "@/navigation/types";
 
-export function LoopsPlayerScreen() {
-  return <ScreenPlaceholder title="Loops player" note="Full-screen immersive video/audio player" />;
+type Props = NativeStackScreenProps<RootStackParamList, "LoopsPlayer">;
+
+export function LoopsPlayerScreen({ route }: Props) {
+  const { roomId, loopId, startLoopId } = route.params;
+  const [loops, setLoops] = useState<Loop[]>([]);
+  const [index, setIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tuned, setTuned] = useState(false);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      // A standalone loop (posted from the composer) or a room's loops.
+      const res = loopId ? { items: [await getLoop(loopId)] } : roomId ? await getRoomLoops(roomId) : { items: [] };
+      setLoops(res.items);
+      // Opened from a Roam tile: start on that loop.
+      if (startLoopId) setIndex(Math.max(0, res.items.findIndex((l) => l.id === startLoopId)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't load this room's loops");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [roomId, loopId, startLoopId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function onTuneIn() {
+    if (!roomId) return;
+    setTuned(true);
+    try {
+      await tuneIn(roomId);
+    } catch {
+      setTuned(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.surfaceRaised} />
+      </View>
+    );
+  }
+
+  if (error || loops.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>{error ?? "No loops in this room yet."}</Text>
+      </View>
+    );
+  }
+
+  const loop = loops[index];
+  const cover = loop.media[0];
+
+  return (
+    <View style={styles.container}>
+      {cover?.kind === "video" ? (
+        <LoopVideo key={loop.id} url={cover.url} rate={loop.playbackRate ?? 1} trimStart={loop.trimStartSec} trimEnd={loop.trimEndSec} />
+      ) : cover ? (
+        <Image source={{ uri: cover.url }} style={StyleSheet.absoluteFill} />
+      ) : (
+        <LinearGradient colors={["#2B2118", "#584232", "#1A1510"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />
+      )}
+      <View style={styles.scrim} />
+
+      <View style={styles.topBar}>
+        <View style={styles.topBarLeft}>
+          <Text style={styles.roomLabel}>Loops</Text>
+          <Text style={styles.crewLabel}>Crew</Text>
+        </View>
+        <VideoIcon size={22} color={colors.surfaceRaised} strokeWidth={1.8} />
+      </View>
+
+      <View style={styles.reactionRail}>
+        <Pressable style={styles.reactionItem} onPress={() => setIndex((i) => Math.min(i + 1, loops.length - 1))}>
+          <ZapIcon size={27} color={colors.cheer} />
+          <Text style={styles.reactionLabel}>8.4k</Text>
+        </Pressable>
+        <View style={styles.reactionItem}>
+          <ReplyIcon size={26} color={colors.surfaceRaised} strokeWidth={1.8} />
+          <Text style={styles.reactionLabel}>212</Text>
+        </View>
+        <View style={styles.reactionItem}>
+          <RepostIcon size={26} color={colors.surfaceRaised} strokeWidth={1.8} />
+          <Text style={styles.reactionLabel}>Send</Text>
+        </View>
+        <MoreHorizontalIcon size={24} color={colors.surfaceRaised} />
+        <Avatar handle={loop.author.handle} displayName={loop.author.displayName} avatarUrl={loop.author.avatarUrl} size={42} radius={13} />
+      </View>
+
+      <View style={styles.bottomOverlay}>
+        <View style={styles.authorRow}>
+          <Avatar handle={loop.author.handle} displayName={loop.author.displayName} avatarUrl={loop.author.avatarUrl} size={34} radius={12} />
+          <Text style={styles.authorHandle}>{loop.author.handle}</Text>
+          <Pressable style={styles.tuneInButton} onPress={onTuneIn} disabled={tuned}>
+            <Text style={styles.tuneInText}>{tuned ? "Tuned in" : "Tune in"}</Text>
+          </Pressable>
+        </View>
+        {loop.caption ? <Text style={styles.caption}>{loop.caption}</Text> : null}
+        {loop.audioLabel ? (
+          <View style={styles.audioRow}>
+            <MusicNoteIcon size={14} color={colors.surfaceRaised} />
+            <Text style={styles.audioLabel}>{loop.audioLabel}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.progressTrack}>
+        <View style={styles.progressFill} />
+      </View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#2B2118" },
+  center: { flex: 1, backgroundColor: "#2B2118", alignItems: "center", justifyContent: "center", padding: 24 },
+  emptyText: { color: colors.surfaceRaised, textAlign: "center" },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(23,20,18,0.35)" },
+  topBar: { position: "absolute", top: 56, left: 20, right: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 52 },
+  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 18 },
+  roomLabel: { fontFamily: fonts.display, fontSize: 19, color: colors.surfaceRaised },
+  crewLabel: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "rgba(255,253,250,0.55)" },
+  reactionRail: { position: "absolute", right: 16, bottom: 206, alignItems: "center", gap: 20 },
+  reactionItem: { alignItems: "center", gap: 7 },
+  reactionLabel: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.surfaceRaised },
+  bottomOverlay: { position: "absolute", left: 0, right: 80, bottom: 134, paddingHorizontal: 20 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 11 },
+  authorHandle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.surfaceRaised },
+  tuneInButton: { backgroundColor: colors.surfaceRaised, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
+  tuneInText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.ink },
+  caption: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: "rgba(255,253,250,0.9)" },
+  audioRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 11 },
+  audioLabel: { fontFamily: fonts.bodyMedium, fontSize: 12, color: "rgba(255,253,250,0.8)" },
+  progressTrack: { position: "absolute", left: 20, right: 20, bottom: 112, height: 3, borderRadius: 999, backgroundColor: "rgba(255,253,250,0.22)" },
+  progressFill: { width: "38%", height: 3, borderRadius: 999, backgroundColor: colors.surfaceRaised },
+});

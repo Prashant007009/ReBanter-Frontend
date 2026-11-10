@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { colors, fonts } from "@/theme/colors";
 
 /**
  * Temporary stand-in used until a screen's story is implemented.
@@ -24,13 +24,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
+    fontFamily: fonts.display,
     fontSize: 24,
-    color: colors.ink,
-    fontWeight: "700",
+    color: colors.onDark,
   },
   note: {
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.inkMuted,
+    color: colors.onDarkMuted,
     textAlign: "center",
   },
 });
